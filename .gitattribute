@@ -1,0 +1,19 @@
+# Forzar que todos los archivos de texto usen saltos de línea LF en el repositorio
+# Esto normaliza el código para Mac y Windows
+* text=auto
+
+# Archivos específicos de Java siempre con LF
+*.java text eol=lf
+*.xml text eol=lf
+*.txt text eol=lf
+*.md text eol=lf
+*.gitignore text eol=lf
+*.gitattributes text eol=lf
+
+# Archivos binarios (imágenes, etc) no deben tocarse nunca
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.jar binary

@@ -1,0 +1,35 @@
+### IntelliJ IDEA (CRÍTICO - AGREGADO) ###
+.idea/
+*.iws
+*.iml
+*.ipr
+
+### Compilados y Build ###
+out/
+build/
+target/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+### Mac OS ###
+.DS_Store
+
+### Otros IDEs (Por seguridad) ###
+# Eclipse
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+bin/
+
+# VS Code
+.vscode/
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
