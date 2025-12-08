@@ -28,25 +28,24 @@ public class GameManager {
         this.reglas = new MotorReglas(); // SRP: Delegamos la matemática aquí
     }
 
-    // --- GESTIÓN DE JUGADORES ---
 
     public void agregarJugador(ClientHandler jugador) {
         if (jugadores.size() < 2 && !juegoIniciado) {
             jugadores.add(jugador);
-            // Avisar al jugador que entró
+
             jugador.enviarMensaje(new Mensaje(Mensaje.Tipo.ROL_ASIGNADO, "JUGADOR"));
 
-            // Si ya estamos listos (2 jugadores), iniciamos
+
             if (jugadores.size() == 2) {
                 iniciarPartida();
             }
         } else {
-            // Manejo de Espectador (Extra SOLID: No mezclamos lógica de juego con lógica de espectador)
+
             jugador.enviarMensaje(new Mensaje(Mensaje.Tipo.ROL_ASIGNADO, "ESPECTADOR"));
         }
     }
 
-    // --- FLUJO DEL JUEGO ---
+
 
     private void iniciarPartida() {
         juegoIniciado = true;
@@ -58,13 +57,60 @@ public class GameManager {
         ClientHandler actual = getJugadorActual();
         broadcast(new Mensaje(Mensaje.Tipo.ACTUALIZAR_TABLERO, "Turno de: " + actual.getNombreUsuario()));
 
-        // Reiniciar Timer de 60s
+
         if (timerTurno != null) timerTurno.cancel();
         timerTurno = new Timer();
         timerTurno.schedule(new TimerTask() {
             @Override
             public void run() {
-                forzarFinDeTurno(); // Castigo por tiempo
+                forzarFinDeTurno();
             }
         }, 60000);
     }
+    public synchronized void procesarAccionSacar(ClientHandler solicitante) {
+
+        if (!solicitante.equals(getJugadorActual())) return;
+
+
+        timerTurno.cancel();
+
+
+        Carta cartaNueva = new Carta(5, TipoAccion.NINGUNA, "5 de Corazones");
+
+
+        boolean esBust = reglas.verificarBust(cartasEnMesa, cartaNueva);
+
+        if (esBust) {
+            broadcast(new Mensaje(Mensaje.Tipo.ACTUALIZAR_TABLERO, "¡BUST! Salió repetida: " + cartaNueva.getTexto()));
+            cartasEnMesa.clear();
+            siguienteTurno();
+        } else {
+            cartasEnMesa.add(cartaNueva);
+            broadcast(new Mensaje(Mensaje.Tipo.ACTUALIZAR_TABLERO, cartasEnMesa));
+
+            iniciarTurno();
+        }
+    }
+
+    private void siguienteTurno() {
+        indiceTurno = (indiceTurno + 1) % jugadores.size();
+        iniciarTurno();
+    }
+
+    private void forzarFinDeTurno() {
+        broadcast(new Mensaje(Mensaje.Tipo.ERROR, "¡Tiempo agotado! Cambio de turno."));
+        cartasEnMesa.clear();
+        siguienteTurno();
+    }
+
+
+    private ClientHandler getJugadorActual() {
+        return jugadores.get(indiceTurno);
+    }
+
+    private void broadcast(Mensaje msg) {
+        for (ClientHandler j : jugadores) {
+            j.enviarMensaje(msg);
+        }
+    }
+}
