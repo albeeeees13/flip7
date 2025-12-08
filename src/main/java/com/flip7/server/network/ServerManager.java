@@ -6,7 +6,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 public class ServerManager {
-    private static final int PUERTO = 12345; 
+    private static final int PUERTO = 12345;
     private ServerSocket serverSocket;
     private boolean corriendo = false;
 
