@@ -1,7 +1,7 @@
 package com.flip7.server.network;
 
 import com.flip7.common.Mensaje;
-import com.flip7.server.logic.GameManager; 
+import com.flip7.server.logic.GameManager;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
