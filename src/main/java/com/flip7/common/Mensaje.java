@@ -1,5 +1,6 @@
 package com.flip7.common;
 
+import com.flip7.common.enums.TipoMensaje;
 import java.io.Serializable;
 
 public class Mensaje implements Serializable {
@@ -22,17 +23,17 @@ public class Mensaje implements Serializable {
         FIN_JUEGO
     }
 
-    private Tipo tipo;
+    private TipoMensaje tipo;
     private Object contenido;
     private String remitente;
 
-    public Mensaje(Tipo tipo, Object contenido, String remitente) {
+    public Mensaje(TipoMensaje tipo, Object contenido, String remitente) {
         this.tipo = tipo;
         this.contenido = contenido;
         this.remitente = remitente;
     }
 
-    public Mensaje(Tipo tipo, Object contenido) {
+    public Mensaje(TipoMensaje tipo, Object contenido) {
         this(tipo, contenido, "SISTEMA");
     }
 
