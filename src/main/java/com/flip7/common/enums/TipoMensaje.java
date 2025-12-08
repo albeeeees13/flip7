@@ -1,0 +1,19 @@
+package com.flip7.common.enums;
+
+public enum TipoMensaje {
+    LOGIN,
+    LOGIN_EXITO,
+    ERROR,
+    CREAR_SALA,
+    UNIRSE_SALA,
+    LISTA_SALAS,
+    ROL_ASIGNADO,
+    INICIO_JUEGO,
+    ACCION_SACAR,
+    ACCION_PLANTARSE,
+    ACTUALIZAR_TABLERO,
+    SOLICITAR_OBJETIVO,
+    SELECCIONAR_OBJETIVO,
+    MENSAJE_CHAT,
+    FIN_JUEGO
+}
