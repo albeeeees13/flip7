@@ -8,7 +8,7 @@ public class MotorReglas {
 
     private static final int META_VICTORIA = 200;
 
- 
+
     public int calcularPuntosMesa(List<Carta> cartasEnMesa) {
         return cartasEnMesa.stream()
                 .mapToInt(Carta::getValor)
