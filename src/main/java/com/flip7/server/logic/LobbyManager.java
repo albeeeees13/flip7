@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class LobbyManager {
-   
+
     private List<ClientHandler> clientesConectados;
 
     public LobbyManager() {
