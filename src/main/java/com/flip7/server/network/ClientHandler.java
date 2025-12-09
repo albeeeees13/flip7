@@ -2,6 +2,8 @@ package com.flip7.server.network;
 
 import com.flip7.server.logic.GameManager;
 import com.flip7.server.logic.LobbyManager;
+import com.flip7.common.enums.TipoMensaje;
+import com.flip7.common.network.Mensaje;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -16,7 +18,7 @@ public class ClientHandler implements Runnable {
     private String nombreUsuario;
     private boolean conectado = true;
 
-    private LobbyManager lobby
+    private LobbyManager lobby;
     private GameManager salaActual;
 
 
