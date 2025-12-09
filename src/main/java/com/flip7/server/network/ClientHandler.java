@@ -26,7 +26,6 @@ public class ClientHandler implements Runnable {
         this.socket = socket;
         this.lobby = lobby;
         try {
-
             this.out = new ObjectOutputStream(socket.getOutputStream());
             this.in = new ObjectInputStream(socket.getInputStream());
         } catch (IOException e) {
@@ -38,23 +37,52 @@ public class ClientHandler implements Runnable {
     @Override
     public void run() {
         try {
-            if (conectado) lobby.agregarJugador(this);
+            // Agregamos al jugador al lobby apenas conecta
+            if (conectado && lobby != null) {
+                lobby.agregarJugador(this);
+            }
             while (conectado) {
                 Mensaje mensajeRecibido = (Mensaje) in.readObject();
                 System.out.println("Mensaje recibido de " + getNombreUsuario() + ": " + mensajeRecibido.getTipo());
-                switch (mensajeRecibido.getTipo()) {
-                    case LOGIN:
-                        this.nombreUsuario = (String) mensajeRecibido.getContenido();
-                        break;
-                    case UNIRSE_SALA:
-                        break;
-                }
+                procesarMensaje(mensajeRecibido);
             }
         } catch (IOException | ClassNotFoundException e) {
+            System.out.println("Cliente desconectado: " + getNombreUsuario());
+        } finally {
             cerrarConexion();
         }
     }
+    private void procesarMensaje(Mensaje msj) {
+        switch (msj.getTipo()) {
+            case LOGIN:
+                this.nombreUsuario = (String) msj.getContenido();
+                System.out.println("Usuario logueado: " + nombreUsuario);
+                enviarMensaje(new Mensaje(TipoMensaje.LOGIN_EXITO, "Bienvenido " + nombreUsuario));
+                break;
 
+            case CREAR_SALA:
+                break;
+
+            case UNIRSE_SALA:
+                break;
+
+            case MENSAJE_CHAT:
+                break;
+
+            case ACCION_SACAR:
+                if (salaActual != null) {
+                }
+                break;
+
+            case ACCION_PLANTARSE:
+                if (salaActual != null) {
+                }
+                break;
+
+            default:
+                System.out.println("Mensaje no manejado: " + msj.getTipo());
+        }
+    }
 
     public void enviarMensaje(Mensaje msg) {
         try {
@@ -72,7 +100,7 @@ public class ClientHandler implements Runnable {
 
     private void cerrarConexion() {
         conectado = false;
-        if (lobby != null) lobby.removerJugador(this); // <--- AGREGAR ESTO
+        if (lobby != null) lobby.removerJugador(this);
         try {
             if (socket != null) socket.close();
         } catch (IOException e) {

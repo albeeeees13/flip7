@@ -1,6 +1,6 @@
 package com.flip7.server.network;
 
-import com.flip7.server.logic.GameManager;
+import com.flip7.server.logic.LobbyManager;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -10,12 +10,11 @@ public class ServerManager {
     private ServerSocket serverSocket;
     private boolean corriendo = false;
 
-
-    private GameManager salaPrincipal;
+    private LobbyManager lobbyManager;
 
     public ServerManager() {
-
-        this.salaPrincipal = new GameManager("Sala-1");
+        this.lobbyManager = new LobbyManager();
+        System.out.println("LobbyManager inicializado.");
     }
 
     public void iniciar() {
@@ -26,16 +25,10 @@ public class ServerManager {
             System.out.println("Esperando jugadores...");
 
             while (corriendo) {
-
                 Socket socketCliente = serverSocket.accept();
                 System.out.println("Nuevo cliente conectado: " + socketCliente.getInetAddress());
 
-
-                ClientHandler handler = new ClientHandler(socketCliente);
-
-
-                salaPrincipal.agregarJugador(handler);
-
+                ClientHandler handler = new ClientHandler(socketCliente, this.lobbyManager);
 
                 new Thread(handler).start();
             }
