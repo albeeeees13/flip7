@@ -1,4 +1,4 @@
-package com.flip7.common;
+package com.flip7.common.enums;
 
 public enum TipoAccion {
     NINGUNA,        // Carta numérica normal

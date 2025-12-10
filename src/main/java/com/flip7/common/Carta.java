@@ -1,5 +1,7 @@
 package com.flip7.common;
 
+import com.flip7.common.enums.TipoAccion;
+
 import java.io.Serializable;
 
 // Serializable es clave para mandarlo por sockets
