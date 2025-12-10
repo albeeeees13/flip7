@@ -19,7 +19,14 @@ public class LobbyManager {
         System.out.println("Lobby: Jugador agregado. Total conectados: " + clientesConectados.size());
 
     }
-
+    public synchronized boolean estaJugadorConectado(String user) {
+        for (ClientHandler c : clientesConectados) {
+            if (c.getNombreUsuario() != null && c.getNombreUsuario().equals(user)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     public synchronized void removerJugador(ClientHandler cliente) {
         clientesConectados.remove(cliente);
