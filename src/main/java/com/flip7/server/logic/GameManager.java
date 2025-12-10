@@ -93,6 +93,32 @@ public class GameManager {
         }
     }
 
+    public synchronized void procesarAccionPlantarse(ClientHandler solicitante) {
+
+        if (!solicitante.equals(getJugadorActual())) return;
+
+
+        if (timerTurno != null) timerTurno.cancel();
+
+
+        int puntosLogrados = reglas.calcularPuntosMesa(cartasEnMesa);
+
+
+        broadcast(new Mensaje(TipoMensaje.MENSAJE_CHAT,
+                solicitante.getNombreUsuario() + " se plantó con " + puntosLogrados + " puntos."));
+
+
+        if (reglas.esGanador(puntosLogrados)) {
+            broadcast(new Mensaje(TipoMensaje.INICIO_JUEGO, "¡JUEGO TERMINADO! Ganador: " + solicitante.getNombreUsuario()));
+            juegoIniciado = false;
+        } else {
+
+            cartasEnMesa.clear();
+            broadcast(new Mensaje(TipoMensaje.ACTUALIZAR_TABLERO, new ArrayList<>(cartasEnMesa))); // Mesa vacía
+            siguienteTurno();
+        }
+    }
+
     private void siguienteTurno() {
         indiceTurno = (indiceTurno + 1) % jugadores.size();
         iniciarTurno();
