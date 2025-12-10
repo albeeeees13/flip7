@@ -1,8 +1,7 @@
 package com.flip7.server.logic;
 
-import com.flip7.common.Carta;
-import com.flip7.common.Mensaje;
-import com.flip7.common.TipoAccion;
+import com.flip7.common.model.Carta;
+import com.flip7.common.enums.TipoAccion;
 
 import com.flip7.server.network.ClientHandler;
 

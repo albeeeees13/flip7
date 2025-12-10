@@ -1,4 +1,4 @@
-package com.flip7.common;
+package com.flip7.common.model;
 
 import com.flip7.common.enums.TipoAccion;
 

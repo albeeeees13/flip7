@@ -1,7 +1,9 @@
 package com.flip7.server.network;
 
-import com.flip7.common.Mensaje;
 import com.flip7.server.logic.GameManager;
+import com.flip7.server.logic.LobbyManager;
+import com.flip7.common.enums.TipoMensaje;
+import com.flip7.common.network.Mensaje;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -16,13 +18,14 @@ public class ClientHandler implements Runnable {
     private String nombreUsuario;
     private boolean conectado = true;
 
-
+    private LobbyManager lobby;
     private GameManager salaActual;
+
 
     public ClientHandler(Socket socket) {
         this.socket = socket;
+        this.lobby = lobby;
         try {
-
             this.out = new ObjectOutputStream(socket.getOutputStream());
             this.in = new ObjectInputStream(socket.getInputStream());
         } catch (IOException e) {
@@ -34,23 +37,52 @@ public class ClientHandler implements Runnable {
     @Override
     public void run() {
         try {
+            // Agregamos al jugador al lobby apenas conecta
+            if (conectado && lobby != null) {
+                lobby.agregarJugador(this);
+            }
             while (conectado) {
-
                 Mensaje mensajeRecibido = (Mensaje) in.readObject();
-
-                System.out.println("Mensaje recibido de " + nombreUsuario + ": " + mensajeRecibido.getTipo());
-
-
-                if (mensajeRecibido.getTipo() == Mensaje.Tipo.LOGIN) {
-                    this.nombreUsuario = (String) mensajeRecibido.getContenido();
-                }
-
+                System.out.println("Mensaje recibido de " + getNombreUsuario() + ": " + mensajeRecibido.getTipo());
+                procesarMensaje(mensajeRecibido);
             }
         } catch (IOException | ClassNotFoundException e) {
+            System.out.println("Cliente desconectado: " + getNombreUsuario());
+        } finally {
             cerrarConexion();
         }
     }
+    private void procesarMensaje(Mensaje msj) {
+        switch (msj.getTipo()) {
+            case LOGIN:
+                this.nombreUsuario = (String) msj.getContenido();
+                System.out.println("Usuario logueado: " + nombreUsuario);
+                enviarMensaje(new Mensaje(TipoMensaje.LOGIN_EXITO, "Bienvenido " + nombreUsuario));
+                break;
 
+            case CREAR_SALA:
+                break;
+
+            case UNIRSE_SALA:
+                break;
+
+            case MENSAJE_CHAT:
+                break;
+
+            case ACCION_SACAR:
+                if (salaActual != null) {
+                }
+                break;
+
+            case ACCION_PLANTARSE:
+                if (salaActual != null) {
+                }
+                break;
+
+            default:
+                System.out.println("Mensaje no manejado: " + msj.getTipo());
+        }
+    }
 
     public void enviarMensaje(Mensaje msg) {
         try {
@@ -68,10 +100,11 @@ public class ClientHandler implements Runnable {
 
     private void cerrarConexion() {
         conectado = false;
+        if (lobby != null) lobby.removerJugador(this);
         try {
             if (socket != null) socket.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
-}
+    }
