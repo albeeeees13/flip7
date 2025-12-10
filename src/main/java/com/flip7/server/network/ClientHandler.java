@@ -4,6 +4,8 @@ import com.flip7.server.logic.GameManager;
 import com.flip7.server.logic.LobbyManager;
 import com.flip7.common.enums.TipoMensaje;
 import com.flip7.common.network.Mensaje;
+import com.flip7.server.logic.ValidadorCredenciales;
+import com.flip7.server.data.UsuarioDAO;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -21,8 +23,7 @@ public class ClientHandler implements Runnable {
     private LobbyManager lobby;
     private GameManager salaActual;
 
-
-    public ClientHandler(Socket socket,LobbyManager lobby) {
+    public ClientHandler(Socket socket, LobbyManager lobby) {
         this.socket = socket;
         this.lobby = lobby;
         try {
@@ -37,7 +38,6 @@ public class ClientHandler implements Runnable {
     @Override
     public void run() {
         try {
-            // Agregamos al jugador al lobby apenas conecta
             if (conectado && lobby != null) {
                 lobby.agregarJugador(this);
             }
@@ -52,35 +52,95 @@ public class ClientHandler implements Runnable {
             cerrarConexion();
         }
     }
+
     private void procesarMensaje(Mensaje msj) {
         switch (msj.getTipo()) {
             case LOGIN:
-                this.nombreUsuario = (String) msj.getContenido();
-                System.out.println("Usuario logueado: " + nombreUsuario);
-                enviarMensaje(new Mensaje(TipoMensaje.LOGIN_EXITO, "Bienvenido " + nombreUsuario));
+                String contenido = (String) msj.getContenido();
+
+                // 1. Validación de Formato Básico
+                if (contenido == null || !contenido.contains(",")) {
+                    enviarMensaje(new Mensaje(TipoMensaje.ERROR, "Formato incorrecto. Envíe: usuario,contraseña"));
+                    break;
+                }
+
+                String[] partes = contenido.split(",");
+                if (partes.length < 2) {
+                    enviarMensaje(new Mensaje(TipoMensaje.ERROR, "Falta la contraseña."));
+                    break;
+                }
+
+                String usuarioInput = partes[0].trim();
+                String passInput = partes[1].trim();
+
+                // 2. Validación de Lógica de Negocio (SRP - Clase ValidadorCredenciales)
+
+                String errorValidacion = ValidadorCredenciales.validarUsuario(usuarioInput);
+                if (!errorValidacion.equals("OK")) {
+                    enviarMensaje(new Mensaje(TipoMensaje.ERROR, errorValidacion));
+                    break;
+                }
+
+                // 3. Validación de Sesión en Memoria (¿Ya está conectado?)
+                if (lobby.estaJugadorConectado(usuarioInput)) {
+                    enviarMensaje(new Mensaje(TipoMensaje.ERROR, "La cuenta '" + usuarioInput + "' ya está en uso."));
+
+                    break;
+                }
+
+                // 4. Validación y Persistencia en Base de Datos (DAO)
+                UsuarioDAO dao = new UsuarioDAO();
+
+
+                if (dao.login(usuarioInput, passInput)) {
+                    this.nombreUsuario = usuarioInput;
+                    enviarMensaje(new Mensaje(TipoMensaje.LOGIN_EXITO, "Bienvenido de nuevo, " + usuarioInput));
+                }
+
+                else {
+                    boolean registrado = dao.registrar(usuarioInput, passInput);
+                    if (registrado) {
+                        this.nombreUsuario = usuarioInput;
+                        enviarMensaje(new Mensaje(TipoMensaje.LOGIN_EXITO, "Cuenta creada. Bienvenido " + usuarioInput));
+                    } else {
+
+                        enviarMensaje(new Mensaje(TipoMensaje.ERROR, "Contraseña incorrecta."));
+                    }
+                }
                 break;
 
             case CREAR_SALA:
+
                 break;
 
             case UNIRSE_SALA:
+
                 break;
 
             case MENSAJE_CHAT:
+
+                if (salaActual != null) {
+                    // Reenviar mensaje al otro jugador a través del GameManager
+                    // salaActual.enviarChat(this, (String) msj.getContenido());
+                } else {
+                    enviarMensaje(new Mensaje(TipoMensaje.ERROR, "No puedes chatear fuera de una partida."));
+                }
                 break;
 
             case ACCION_SACAR:
                 if (salaActual != null) {
+                    salaActual.procesarAccionSacar(this);
                 }
                 break;
 
             case ACCION_PLANTARSE:
                 if (salaActual != null) {
+                    salaActual.procesarAccionPlantarse(this);
                 }
                 break;
 
             default:
-                System.out.println("Mensaje no manejado: " + msj.getTipo());
+                System.out.println("Mensaje no manejado o desconocido: " + msj.getTipo());
         }
     }
 
@@ -98,13 +158,24 @@ public class ClientHandler implements Runnable {
         return (nombreUsuario != null) ? nombreUsuario : "Anónimo";
     }
 
+    // Método necesario para que el Lobby le asigne una sala cuando empieza a jugar
+    public void setSalaActual(GameManager sala) {
+        this.salaActual = sala;
+    }
+
+    public GameManager getSalaActual() {
+        return this.salaActual;
+    }
+
     private void cerrarConexion() {
         conectado = false;
         if (lobby != null) lobby.removerJugador(this);
         try {
+            if (out != null) out.close();
+            if (in != null) in.close();
             if (socket != null) socket.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
-    }
+}
