@@ -22,7 +22,7 @@ public class ClientHandler implements Runnable {
     private GameManager salaActual;
 
 
-    public ClientHandler(Socket socket) {
+    public ClientHandler(Socket socket,LobbyManager lobby) {
         this.socket = socket;
         this.lobby = lobby;
         try {
