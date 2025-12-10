@@ -12,7 +12,6 @@ public class GameController {
     private ClientConnection connection;
     private LoginWindow loginWindow;
 
-
     public GameController() {
         // Inicialmente no estamos conectados
     }
