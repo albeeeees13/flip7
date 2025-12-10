@@ -1,9 +1,9 @@
 package com.flip7.server.logic;
 
 import com.flip7.common.model.Carta;
+import com.flip7.common.network.Mensaje;
 import com.flip7.common.enums.TipoAccion;
 import com.flip7.common.enums.TipoMensaje;
-import com.flip7.common.network.Mensaje;
 
 import com.flip7.server.network.ClientHandler;
 
@@ -34,7 +34,7 @@ public class GameManager {
         if (jugadores.size() < 2 && !juegoIniciado) {
             jugadores.add(jugador);
 
-            jugador.enviarMensaje(new Mensaje(Mensaje.Tipo.ROL_ASIGNADO, "JUGADOR"));
+            jugador.enviarMensaje(new Mensaje(TipoMensaje.ROL_ASIGNADO, "JUGADOR"));
 
 
             if (jugadores.size() == 2) {
@@ -42,7 +42,7 @@ public class GameManager {
             }
         } else {
 
-            jugador.enviarMensaje(new Mensaje(Mensaje.Tipo.ROL_ASIGNADO, "ESPECTADOR"));
+            jugador.enviarMensaje(new Mensaje(TipoMensaje.ROL_ASIGNADO, "ESPECTADOR"));
         }
     }
 
@@ -50,13 +50,13 @@ public class GameManager {
 
     private void iniciarPartida() {
         juegoIniciado = true;
-        broadcast(new Mensaje(Mensaje.Tipo.INICIO_JUEGO, "¡La partida ha comenzado!"));
+        broadcast(new Mensaje(TipoMensaje.INICIO_JUEGO, "¡La partida ha comenzado!"));
         iniciarTurno();
     }
 
     private void iniciarTurno() {
         ClientHandler actual = getJugadorActual();
-        broadcast(new Mensaje(Mensaje.Tipo.ACTUALIZAR_TABLERO, "Turno de: " + actual.getNombreUsuario()));
+        broadcast(new Mensaje(TipoMensaje.ACTUALIZAR_TABLERO, "Turno de: " + actual.getNombreUsuario()));
 
 
         if (timerTurno != null) timerTurno.cancel();
@@ -82,12 +82,12 @@ public class GameManager {
         boolean esBust = reglas.verificarBust(cartasEnMesa, cartaNueva);
 
         if (esBust) {
-            broadcast(new Mensaje(Mensaje.Tipo.ACTUALIZAR_TABLERO, "¡BUST! Salió repetida: " + cartaNueva.getTexto()));
+            broadcast(new Mensaje(TipoMensaje.ACTUALIZAR_TABLERO, "¡BUST! Salió repetida: " + cartaNueva.getTexto()));
             cartasEnMesa.clear();
             siguienteTurno();
         } else {
             cartasEnMesa.add(cartaNueva);
-            broadcast(new Mensaje(Mensaje.Tipo.ACTUALIZAR_TABLERO, cartasEnMesa));
+            broadcast(new Mensaje(TipoMensaje.ACTUALIZAR_TABLERO, cartasEnMesa));
 
             iniciarTurno();
         }
@@ -99,7 +99,7 @@ public class GameManager {
     }
 
     private void forzarFinDeTurno() {
-        broadcast(new Mensaje(Mensaje.Tipo.ERROR, "¡Tiempo agotado! Cambio de turno."));
+        broadcast(new Mensaje(TipoMensaje.ERROR, "¡Tiempo agotado! Cambio de turno."));
         cartasEnMesa.clear();
         siguienteTurno();
     }
