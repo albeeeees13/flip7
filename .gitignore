@@ -38,3 +38,16 @@ bin/
 *.log
 ~$*
 ~*
+### Base de Datos (SQLite) - ¡CRÍTICO! ###
+# Ignorar estos es vital para no tener conflictos binarios
+*.db
+*.sqlite
+*.sqlite3
+flip7.db
+
+### Windows (Basura del sistema) ###
+Thumbs.db
+Desktop.ini
+
+### Logs de errores de Java ###
+hs_err_pid*
