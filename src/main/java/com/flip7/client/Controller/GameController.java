@@ -1,5 +1,7 @@
-package com.flip7.client.controller;
+package com.flip7.client.Controller;
 
+import com.flip7.client.ui.GameWindow;
+import com.flip7.client.ui.LobbyWindow;
 import com.flip7.client.network.ClientConnection;
 import com.flip7.client.ui.LoginWindow;
 import com.flip7.common.enums.TipoMensaje;
@@ -10,66 +12,77 @@ import javax.swing.*;
 public class GameController {
 
     private ClientConnection connection;
+    // 1. CORRECCIÓN: Agregamos estas variables para que no den error
+    private JFrame currentView;
     private LoginWindow loginWindow;
 
     public GameController() {
-        // Inicialmente no estamos conectados
+    }
+
+    public void setCurrentView(JFrame view) {
+        this.currentView = view;
     }
 
     public void setLoginWindow(LoginWindow window) {
         this.loginWindow = window;
+        this.currentView = window; // Actualizamos la vista actual también
     }
 
-    // Acción de conectar (llamada desde el botón de la UI)
-    public void conectar(String ip, int puerto, String usuario) {
-        connection = new ClientConnection(ip, puerto, this);
-        if (connection.conectar()) {
-            // Si conecta el socket, intentamos el Login lógico
-            connection.enviarMensaje(new Mensaje(TipoMensaje.LOGIN, usuario));
-        } else {
-            JOptionPane.showMessageDialog(loginWindow, "No se pudo conectar al servidor.");
+    // 2. CORRECCIÓN: Actualizamos los parámetros para que coincidan con LoginWindow (5 datos)
+    public void conectar(String ip, int puerto, String usuario, String password, String accion) {
+        try {
+            // Creamos la conexión y arrancamos el hilo
+            connection = new ClientConnection(ip, puerto, this);
+            new Thread(connection).start();
+
+            // Enviamos el login con usuario y contraseña
+            String payload = usuario + "," + password;
+            connection.enviarMensaje(new Mensaje(TipoMensaje.LOGIN, payload));
+
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(currentView, "No se pudo conectar: " + e.getMessage());
         }
     }
 
-    // Método que recibe TODO lo que llega del servidor (Joahan)
+    // Método que recibe mensajes del servidor (Llamado desde ClientConnection)
     public void recibirMensaje(Mensaje msj) {
         System.out.println("Cliente recibió: " + msj.getTipo());
 
         switch (msj.getTipo()) {
             case LOGIN_EXITO:
-                JOptionPane.showMessageDialog(loginWindow, "¡Conectado! " + msj.getContenido());
-                // TODO: Aquí cerrarías loginWindow y abrirías LobbyWindow
-                // loginWindow.dispose();
-                // new LobbyWindow(this).setVisible(true);
+                JOptionPane.showMessageDialog(currentView, "¡Conectado! Bienvenido " + msj.getContenido());
+                abrirLobby(); // Cambiamos de ventana
                 break;
 
             case ERROR:
-                JOptionPane.showMessageDialog(loginWindow, "Error: " + msj.getContenido());
+                JOptionPane.showMessageDialog(currentView, "Error: " + msj.getContenido());
                 break;
 
-            case MENSAJE_CHAT:
-                System.out.println("Chat: " + msj.getContenido());
-                break;
+            // Agrega aquí más casos si necesitas (CHAT, etc.)
         }
     }
 
-    public void enviarMensaje(Mensaje msj) {
-        if (connection != null) {
-            connection.enviarMensaje(msj);
-        }
+
+    private void abrirLobby() {
+        if (currentView != null) currentView.dispose();
+        LobbyWindow lobby = new LobbyWindow(this);
+        lobby.setVisible(true);
+        this.currentView = lobby;
     }
+
 
     public void crearSala() {
-        connection.enviarMensaje(new Mensaje(TipoMensaje.CREAR_SALA, null));
+        if (connection != null) connection.enviarMensaje(new Mensaje(TipoMensaje.CREAR_SALA, null));
     }
 
     public void unirseSala(String idSala) {
-        connection.enviarMensaje(new Mensaje(TipoMensaje.UNIRSE_SALA, idSala));
+        if (connection != null) connection.enviarMensaje(new Mensaje(TipoMensaje.UNIRSE_SALA, idSala));
     }
 
-    public void enviarAccionJuego(TipoAccion accion) {
+
+    public void enviarAccionJuego(TipoMensaje accion) {
         if (connection != null) {
-            connection.enviarMensaje(new Mensaje(TipoMensaje.ACCION_JUEGO, accion));
+            connection.enviarMensaje(new Mensaje(accion, null));
         }
     }
 }

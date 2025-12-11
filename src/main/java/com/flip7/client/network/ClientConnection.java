@@ -1,80 +1,48 @@
 package com.flip7.client.network;
 
+import com.flip7.client.Controller.GameController;
 import com.flip7.common.network.Mensaje;
-import com.flip7.client.controller.GameController;
 import java.io.*;
 import java.net.Socket;
 
 public class ClientConnection implements Runnable {
 
-    private String host;
-    private int puerto;
     private Socket socket;
-    private ObjectOutputStream salida;
-    private ObjectInputStream entrada;
-    private boolean escuchando;
+    private ObjectOutputStream out;
+    private ObjectInputStream in;
+    private boolean conectado = false;
 
-    // Referencia al controlador para avisarle cuando lleguen cosas
+    // AGREGA ESTA VARIABLE
     private GameController controller;
 
-    public ClientConnection(String host, int puerto, GameController controller) {
-        this.host = host;
-        this.puerto = puerto;
-        this.controller = controller;
+    // --- MODIFICA EL CONSTRUCTOR PARA QUE RECIBA EL CONTROLLER ---
+    public ClientConnection(String ip, int puerto, GameController controller) throws IOException {
+        this.socket = new Socket(ip, puerto);
+        this.out = new ObjectOutputStream(socket.getOutputStream());
+        this.in = new ObjectInputStream(socket.getInputStream());
+        this.controller = controller; // <--- Guardamos la referencia
+        this.conectado = true;
     }
 
-    // Intenta conectar al servidor. Retorna true si tuvo éxito.
-    public boolean conectar() {
-        try {
-            socket = new Socket(host, puerto);
-            // OJO: Primero se crea el Output, igual que en el servidor
-            salida = new ObjectOutputStream(socket.getOutputStream());
-            entrada = new ObjectInputStream(socket.getInputStream());
-            escuchando = true;
-
-            // Arrancamos el hilo que escucha lo que dice el servidor
-            new Thread(this).start();
-            return true;
-        } catch (IOException e) {
-            System.err.println("No se pudo conectar al servidor: " + e.getMessage());
-            return false;
-        }
-    }
-
-    // Este hilo se queda esperando mensajes del Servidor
     @Override
     public void run() {
-        while (escuchando) {
-            try {
-                // Leemos el objeto que nos manda el server (Joahan)
-                Mensaje mensaje = (Mensaje) entrada.readObject();
-
-                // Se lo pasamos al controlador para que decida qué hacer (actualizar UI, etc.)
-                controller.recibirMensaje(mensaje);
-
-            } catch (IOException | ClassNotFoundException e) {
-                System.err.println("Conexión perdida con el servidor.");
-                desconectar();
+        try {
+            while (conectado) {
+                Mensaje msj = (Mensaje) in.readObject();
+                // AVISAMOS AL CONTROLADOR CUANDO LLEGA ALGO
+                if (controller != null) {
+                    controller.recibirMensaje(msj);
+                }
             }
+        } catch (Exception e) {
+            System.out.println("Desconectado del servidor");
         }
     }
 
-    // Método que usarás desde la UI para mandar cosas (ej. "Tiro Carta")
-    public void enviarMensaje(Mensaje mensaje) {
+    public void enviarMensaje(Mensaje msj) {
         try {
-            salida.writeObject(mensaje);
-            salida.flush();
-        } catch (IOException e) {
-            System.err.println("Error al enviar mensaje: " + e.getMessage());
-        }
-    }
-
-    public void desconectar() {
-        escuchando = false;
-        try {
-            if (socket != null) socket.close();
-            if (entrada != null) entrada.close();
-            if (salida != null) salida.close();
+            out.writeObject(msj);
+            out.flush();
         } catch (IOException e) {
             e.printStackTrace();
         }

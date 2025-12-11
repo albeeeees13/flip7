@@ -1,6 +1,6 @@
 package com.flip7.client.ui;
 
-import com.flip7.client.controller.GameController;
+import com.flip7.client.Controller.GameController;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;

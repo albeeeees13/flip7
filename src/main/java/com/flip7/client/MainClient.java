@@ -1,6 +1,6 @@
 package com.flip7.client;
 
-import com.flip7.client.controller.GameController;
+import com.flip7.client.Controller.GameController;
 import com.flip7.client.ui.LoginWindow;
 import javax.swing.SwingUtilities;
 
