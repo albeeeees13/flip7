@@ -9,6 +9,7 @@ import com.flip7.common.model.Carta;
 public class GameWindow extends JFrame {
     private GameController controller;
     private JPanel panelMesa;
+    private JButton btnFlip, btnPlantarse;
 
     public GameWindow(GameController controller) {
         this.controller = controller;
@@ -21,6 +22,15 @@ public class GameWindow extends JFrame {
         panelMesa = new JPanel();
         panelMesa.setBackground(new Color(34, 139, 34));
         add(panelMesa, BorderLayout.CENTER);
+
+
+        JPanel panelControles = new JPanel();
+        btnFlip = new JButton("FLIP (Sacar)");
+        btnPlantarse = new JButton("Plantarse");
+
+        panelControles.add(btnFlip);
+        panelControles.add(btnPlantarse);
+        add(panelControles, BorderLayout.SOUTH);
     }
 
 
