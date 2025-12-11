@@ -58,7 +58,21 @@ public class GameController {
                 JOptionPane.showMessageDialog(currentView, "Error: " + msj.getContenido());
                 break;
 
-            // Agrega aquí más casos si necesitas (CHAT, etc.)
+            case UNIRSE_SALA:
+                abrirJuego();
+                break;
+
+            case LISTA_SALAS:
+
+                if (currentView instanceof LobbyWindow) {
+                    String[] salas = (String[]) msj.getContenido();
+                    ((LobbyWindow) currentView).actualizarListaSalas(salas);
+                }
+                break;
+
+            case ACTUALIZAR_TABLERO:
+
+                break;
         }
     }
 
