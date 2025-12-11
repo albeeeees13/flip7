@@ -106,11 +106,17 @@ public class ClientHandler implements Runnable {
                 break;
 
             case CREAR_SALA:
-
+                // Ahora sí llamamos al lobby
+                if (lobby != null) {
+                    lobby.crearSala(this);
+                }
                 break;
 
             case UNIRSE_SALA:
-
+                String idSala = (String) msj.getContenido();
+                if (lobby != null) {
+                    lobby.unirseASala(idSala, this);
+                }
                 break;
 
             case MENSAJE_CHAT:
