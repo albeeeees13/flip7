@@ -93,7 +93,12 @@ public class GameController {
         if (connection != null) connection.enviarMensaje(new Mensaje(TipoMensaje.UNIRSE_SALA, idSala));
     }
 
-
+    private void abrirJuego() {
+        if (currentView != null) currentView.dispose();
+        GameWindow game = new GameWindow(this);
+        game.setVisible(true);
+        this.currentView = game;
+    }
     public void enviarAccionJuego(TipoMensaje accion) {
         if (connection != null) {
             connection.enviarMensaje(new Mensaje(accion, null));
