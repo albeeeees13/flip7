@@ -16,4 +16,19 @@ public class LobbyWindow extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
     }
+
+    private JList<String> listaSalas;
+    private DefaultListModel<String> modeloSalas;
+
+    // En el constructor:
+    modeloSalas = new DefaultListModel<>();
+    listaSalas = new JList<>(modeloSalas);
+    add(new JScrollPane(listaSalas), BorderLayout.CENTER);
+
+    public void actualizarListaSalas(String[] salas) {
+        modeloSalas.clear();
+        for (String s : salas) {
+            modeloSalas.addElement(s);
+        }
+    }
 }
