@@ -58,4 +58,12 @@ public class GameController {
             connection.enviarMensaje(msj);
         }
     }
+
+    public void crearSala() {
+        connection.enviarMensaje(new Mensaje(TipoMensaje.CREAR_SALA, null));
+    }
+
+    public void unirseSala(String idSala) {
+        connection.enviarMensaje(new Mensaje(TipoMensaje.UNIRSE_SALA, idSala));
+    }
 }
