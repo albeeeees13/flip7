@@ -31,6 +31,14 @@ public class GameWindow extends JFrame {
         panelControles.add(btnFlip);
         panelControles.add(btnPlantarse);
         add(panelControles, BorderLayout.SOUTH);
+
+        btnFlip.addActionListener(e -> {
+            controller.enviarAccionJuego(TipoAccion.SACAR_CARTA);
+        });
+
+        btnPlantarse.addActionListener(e -> {
+            controller.enviarAccionJuego(TipoAccion.PLANTARSE);
+        });
     }
 
 
