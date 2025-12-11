@@ -22,4 +22,7 @@ public class GameWindow extends JFrame {
         panelMesa.setBackground(new Color(34, 139, 34));
         add(panelMesa, BorderLayout.CENTER);
     }
+
+
 }
+

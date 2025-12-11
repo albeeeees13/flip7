@@ -66,4 +66,10 @@ public class GameController {
     public void unirseSala(String idSala) {
         connection.enviarMensaje(new Mensaje(TipoMensaje.UNIRSE_SALA, idSala));
     }
+
+    public void enviarAccionJuego(TipoAccion accion) {
+        if (connection != null) {
+            connection.enviarMensaje(new Mensaje(TipoMensaje.ACCION_JUEGO, accion));
+        }
+    }
 }
