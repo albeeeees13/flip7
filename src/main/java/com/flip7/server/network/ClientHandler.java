@@ -38,6 +38,8 @@ public class ClientHandler implements Runnable {
     @Override
     public void run() {
         try {
+            // Opcional: Agregar al lobby solo si ya hizo login,
+            // pero si tu lógica lo pide antes, déjalo aquí.
             if (conectado && lobby != null) {
                 lobby.agregarJugador(this);
             }
@@ -74,7 +76,6 @@ public class ClientHandler implements Runnable {
                 String passInput = partes[1].trim();
 
                 // 2. Validación de Lógica de Negocio (SRP - Clase ValidadorCredenciales)
-
                 String errorValidacion = ValidadorCredenciales.validarUsuario(usuarioInput);
                 if (!errorValidacion.equals("OK")) {
                     enviarMensaje(new Mensaje(TipoMensaje.ERROR, errorValidacion));
@@ -84,26 +85,21 @@ public class ClientHandler implements Runnable {
                 // 3. Validación de Sesión en Memoria (¿Ya está conectado?)
                 if (lobby.estaJugadorConectado(usuarioInput)) {
                     enviarMensaje(new Mensaje(TipoMensaje.ERROR, "La cuenta '" + usuarioInput + "' ya está en uso."));
-
                     break;
                 }
 
-                // 4. Validación y Persistencia en Base de Datos (DAO)
-                UsuarioDAO dao = new UsuarioDAO();
 
+                UsuarioDAO dao = new UsuarioDAO();
 
                 if (dao.login(usuarioInput, passInput)) {
                     this.nombreUsuario = usuarioInput;
                     enviarMensaje(new Mensaje(TipoMensaje.LOGIN_EXITO, "Bienvenido de nuevo, " + usuarioInput));
-                }
-
-                else {
+                } else {
                     boolean registrado = dao.registrar(usuarioInput, passInput);
                     if (registrado) {
                         this.nombreUsuario = usuarioInput;
                         enviarMensaje(new Mensaje(TipoMensaje.LOGIN_EXITO, "Cuenta creada. Bienvenido " + usuarioInput));
                     } else {
-
                         enviarMensaje(new Mensaje(TipoMensaje.ERROR, "Contraseña incorrecta."));
                     }
                 }
@@ -118,24 +114,19 @@ public class ClientHandler implements Runnable {
                 break;
 
             case MENSAJE_CHAT:
-
                 if (salaActual != null) {
-                    // Reenviar mensaje al otro jugador a través del GameManager
-                    // salaActual.enviarChat(this, (String) msj.getContenido());
+
                 } else {
                     enviarMensaje(new Mensaje(TipoMensaje.ERROR, "No puedes chatear fuera de una partida."));
                 }
                 break;
-
             case ACCION_SACAR:
-                if (salaActual != null) {
-                    salaActual.procesarAccionSacar(this);
-                }
-                break;
-
             case ACCION_PLANTARSE:
                 if (salaActual != null) {
-                    salaActual.procesarAccionPlantarse(this);
+
+                    salaActual.procesarJugada(this, msj.getTipo());
+                } else {
+                    enviarMensaje(new Mensaje(TipoMensaje.ERROR, "No estás en una partida activa."));
                 }
                 break;
 
@@ -158,7 +149,6 @@ public class ClientHandler implements Runnable {
         return (nombreUsuario != null) ? nombreUsuario : "Anónimo";
     }
 
-    // Método necesario para que el Lobby le asigne una sala cuando empieza a jugar
     public void setSalaActual(GameManager sala) {
         this.salaActual = sala;
     }
