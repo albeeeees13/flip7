@@ -19,7 +19,6 @@ public class GameManager {
     private List<ClientHandler> espectadores;
     private List<ClientHandler> jugadoresEnRonda;
 
-    // MARCADOR GLOBAL (Para llegar a 200)
     private Map<String, Integer> puntajesGlobales;
 
     private int indiceTurno = 0;
@@ -30,21 +29,20 @@ public class GameManager {
     private Mazo mazo;
 
     private ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
-    private ScheduledFuture<?> tareaTurno; // Variable corregida
+    private ScheduledFuture<?> tareaTurno;
 
     private boolean esperandoObjetivo = false;
     private Carta cartaEspecialPendiente = null;
     private long ultimoTiempoAccion = 0;
     private final Object lock = new Object();
 
-    // CONSTRUCTOR CORREGIDO (Acepta límite)
     public GameManager(String idSala, int limiteJugadores) {
         this.idSala = idSala;
         this.limiteJugadores = limiteJugadores;
         this.jugadores = new ArrayList<>();
         this.espectadores = new ArrayList<>();
         this.cartasJugadores = new HashMap<>();
-        this.puntajesGlobales = new HashMap<>(); // Inicializar marcador
+        this.puntajesGlobales = new HashMap<>();
         this.reglas = new MotorReglas();
         this.mazo = new Mazo();
     }
@@ -54,23 +52,23 @@ public class GameManager {
             if (jugadores.size() < limiteJugadores && !juegoIniciado) {
                 jugadores.add(jugador);
                 cartasJugadores.put(jugador, new ArrayList<>());
-                puntajesGlobales.put(jugador.getNombreUsuario(), 0); // Empieza en 0 puntos
+                puntajesGlobales.putIfAbsent(jugador.getNombreUsuario(), 0);
 
-                jugador.enviarMensaje(new Mensaje(TipoMensaje.MENSAJE_CHAT, "Unido (" + jugadores.size() + "/" + limiteJugadores + ")"));
+                jugador.enviarMensaje(new Mensaje(TipoMensaje.MENSAJE_CHAT, "Te uniste (" + jugadores.size() + "/" + limiteJugadores + ")"));
 
                 if (jugadores.size() == limiteJugadores) {
                     iniciarPartida();
                 }
             } else {
                 espectadores.add(jugador);
-                jugador.enviarMensaje(new Mensaje(TipoMensaje.MENSAJE_CHAT, "Sala llena. Modo Espectador."));
+                jugador.enviarMensaje(new Mensaje(TipoMensaje.MENSAJE_CHAT, "Sala llena. Eres ESPECTADOR."));
                 enviarEstadoA(jugador);
             }
         }
     }
 
     private void iniciarPartida() {
-        System.out.println("[GAME] Iniciando nueva ronda...");
+        System.out.println("[GAME] Iniciando ronda...");
         synchronized (lock) {
             juegoIniciado = true;
             mazo = new Mazo();
@@ -79,7 +77,7 @@ public class GameManager {
             for (ClientHandler j : jugadores) cartasJugadores.get(j).clear();
         }
 
-        broadcast(new Mensaje(TipoMensaje.INICIO_JUEGO, "¡Ronda iniciada! Primero a 200 gana."));
+        broadcast(new Mensaje(TipoMensaje.INICIO_JUEGO, "¡Ronda iniciada! Gana quien llegue a 200pts."));
         enviarEstadoJuego();
         iniciarTurno();
     }
@@ -95,6 +93,7 @@ public class GameManager {
                 return;
             }
             if (indiceTurno >= jugadoresEnRonda.size()) indiceTurno = 0;
+            if (indiceTurno < 0) indiceTurno = 0;
             actual = jugadoresEnRonda.get(indiceTurno);
         }
 
@@ -104,24 +103,23 @@ public class GameManager {
         }
     }
 
+    // --- AQUÍ ESTÁ EL ARREGLO DEL CHAT ---
     public void procesarJugada(ClientHandler solicitante, Mensaje msj) {
 
-        synchronized (lock) {
-            if (espectadores.contains(solicitante)) {
-                if (msj.getTipo() == TipoMensaje.MENSAJE_CHAT) {
-                    broadcast(new Mensaje(TipoMensaje.MENSAJE_CHAT, "[Espectador] " + solicitante.getNombreUsuario() + ": " + msj.getContenido()));
-                }
-                return;
-            }
-        }
-
-
+        // 1. ¡CHAT PRIMERO! (Así funciona siempre, aunque no sea tu turno)
         if (msj.getTipo() == TipoMensaje.MENSAJE_CHAT) {
-            broadcast(new Mensaje(TipoMensaje.MENSAJE_CHAT, solicitante.getNombreUsuario() + ": " + msj.getContenido()));
-            return; // Terminamos, no hace falta validar turno
+            String prefijo = "";
+            synchronized(lock) {
+                if (espectadores.contains(solicitante)) prefijo = "[Espectador] ";
+            }
+            broadcast(new Mensaje(TipoMensaje.MENSAJE_CHAT, prefijo + solicitante.getNombreUsuario() + ": " + msj.getContenido()));
+            return; // Cortamos aquí para que no siga validando turnos
         }
 
+        // 2. Si es espectador y no es chat, ignorar
+        synchronized (lock) { if (espectadores.contains(solicitante)) return; }
 
+        // 3. Anti-Spam y Validación de Turno
         long ahora = System.currentTimeMillis();
         if (ahora - ultimoTiempoAccion < 500) return;
         ultimoTiempoAccion = ahora;
@@ -133,7 +131,6 @@ public class GameManager {
             if (!jugadoresEnRonda.contains(solicitante)) return;
             actual = jugadoresEnRonda.get(indiceTurno);
         }
-
 
         if (!solicitante.equals(actual) && tipo != TipoMensaje.SELECCIONAR_OBJETIVO) {
             solicitante.enviarMensaje(new Mensaje(TipoMensaje.ERROR, "No es tu turno"));
@@ -150,8 +147,7 @@ public class GameManager {
                     siguienteTurno();
                     break;
                 case SELECCIONAR_OBJETIVO:
-                    String objetivo = (String) msj.getContenido();
-                    aplicarEfectoEspecial(solicitante, objetivo);
+                    aplicarEfectoEspecial(solicitante, (String) msj.getContenido());
                     break;
             }
         } catch (Exception e) {
@@ -162,12 +158,17 @@ public class GameManager {
 
     private void sacarCarta(ClientHandler jugador) {
         if (tareaTurno != null) tareaTurno.cancel(false);
+
         scheduler.submit(() -> {
             try {
                 boolean sigueVivo = ejecutarRoboSeguro(jugador);
-                if (!sigueVivo) iniciarTurno();
-                else if (!esperandoObjetivo) siguienteTurno();
+                if (!sigueVivo) {
+                    iniciarTurno();
+                } else if (!esperandoObjetivo) {
+                    siguienteTurno();
+                }
             } catch (Exception e) {
+                e.printStackTrace();
                 iniciarTurno();
             }
         });
@@ -183,7 +184,6 @@ public class GameManager {
             if (cartaNueva == null) return false;
             susCartas = cartasJugadores.get(jugador);
 
-            // Regla: Solo 1 Second Chance
             if (cartaNueva.getAccion() == AccionEspecial.SECOND_CHANCE) {
                 boolean yaTiene = susCartas.stream().anyMatch(c -> c.getAccion() == AccionEspecial.SECOND_CHANCE);
                 if (yaTiene) {
@@ -195,6 +195,7 @@ public class GameManager {
             esBust = reglas.verificarBust(susCartas, cartaNueva);
             susCartas.add(cartaNueva);
         }
+
         enviarEstadoJuego();
         try { Thread.sleep(800); } catch (Exception e) {}
 
@@ -206,98 +207,115 @@ public class GameManager {
 
             if (tieneSC) {
                 try { Thread.sleep(1000); } catch (Exception e) {}
-                synchronized (lock) {
-                    // --- ARREGLO SECOND CHANCE ---
-                    // Borramos usando iterador para evitar errores de referencia
-                    Iterator<Carta> it = susCartas.iterator();
-                    boolean borradoSC = false;
-                    boolean borradoRep = false;
 
-                    while(it.hasNext()) {
-                        Carta c = it.next();
-                        if (!borradoSC && c.getAccion() == AccionEspecial.SECOND_CHANCE) {
-                            it.remove(); borradoSC = true; continue;
-                        }
-                        if (!borradoRep && c == cartaNueva) {
-                            it.remove(); borradoRep = true; continue;
+                synchronized (lock) {
+                    // --- ARREGLO SECOND CHANCE (BORRADO POR POSICIÓN) ---
+                    // 1. Borrar la carta que causó el bust (SIEMPRE es la última de la lista)
+                    if (!susCartas.isEmpty()) {
+                        susCartas.remove(susCartas.size() - 1);
+                    }
+
+                    // 2. Buscar y borrar la primera Second Chance
+                    for (int i = 0; i < susCartas.size(); i++) {
+                        if (susCartas.get(i).getAccion() == AccionEspecial.SECOND_CHANCE) {
+                            susCartas.remove(i);
+                            break; // ¡Importante! Borrar solo una y salir
                         }
                     }
                 }
+
                 broadcast(new Mensaje(TipoMensaje.MENSAJE_CHAT, "¡" + jugador.getNombreUsuario() + " usó SECOND CHANCE!"));
                 enviarEstadoJuego();
                 return true;
             } else {
+                // BUST REAL
                 jugador.enviarMensaje(new Mensaje(TipoMensaje.ERROR, "BUST"));
                 broadcast(new Mensaje(TipoMensaje.MENSAJE_CHAT, "¡BUST! " + jugador.getNombreUsuario() + " sacó otro " + cartaNueva.getValor()));
+
                 try { Thread.sleep(2000); } catch (Exception e) {}
+
                 synchronized (lock) {
                     cartasJugadores.get(jugador).clear();
-                    sacarDeRonda(jugador, false); // false = NO suma puntos (Bust)
+                    sacarDeRonda(jugador, false);
                 }
                 enviarEstadoJuego();
                 return false;
             }
         } else {
-            // Flip 7 Check (Solo Números)
+            // Flip 7: Solo Números
+            boolean ganoFlip7 = false;
             synchronized(lock) {
-                long unicos = susCartas.stream().filter(c -> c.getTipo() == Tipo.NUMERO).map(Carta::getValor).distinct().count();
-                if (unicos >= 7) {
-                    broadcast(new Mensaje(TipoMensaje.MENSAJE_CHAT, "¡FLIP 7! " + jugador.getNombreUsuario() + " gana +15 puntos!"));
-                    // Se planta automáticamente y gana el bono
-                    // Sumamos 15 extra al cálculo normal en sacarDeRonda
-                    // OJO: Hay que manejar el bono. Simplificado:
-                    sacarDeRonda(jugador, true);
-                    // Sumar bono manual en puntajesGlobales
-                    String nombre = jugador.getNombreUsuario();
-                    puntajesGlobales.put(nombre, puntajesGlobales.get(nombre) + 15);
-                    return false;
+                Set<Integer> numerosUnicos = new HashSet<>();
+                for (Carta c : susCartas) {
+                    if (c.getTipo() == Tipo.NUMERO) numerosUnicos.add(c.getValor());
                 }
+                if (numerosUnicos.size() >= 7) ganoFlip7 = true;
             }
-            if (cartaNueva.getTipo() == Tipo.ACCION && (cartaNueva.getAccion() == AccionEspecial.FREEZE || cartaNueva.getAccion() == AccionEspecial.FLIP_3)) {
+
+            if (ganoFlip7) {
+                broadcast(new Mensaje(TipoMensaje.MENSAJE_CHAT, "¡FLIP 7! " + jugador.getNombreUsuario() + " gana +15 puntos!"));
+                synchronized (lock) {
+                    int pts = reglas.calcularPuntosMesa(cartasJugadores.get(jugador)) + 15;
+                    puntajesGlobales.put(jugador.getNombreUsuario(), puntajesGlobales.get(jugador.getNombreUsuario()) + pts);
+                    sacarDeRondaInterno(jugador);
+                }
+                enviarEstadoJuego();
+                return false;
+            }
+
+            if (cartaNueva.getTipo() == Tipo.ACCION &&
+                    (cartaNueva.getAccion() == AccionEspecial.FREEZE || cartaNueva.getAccion() == AccionEspecial.FLIP_3)) {
                 activarSeleccionObjetivo(jugador, cartaNueva);
             }
             return true;
         }
     }
 
-    // Método centralizado para sacar jugador y SUMAR PUNTOS
     private void sacarDeRonda(ClientHandler jugador, boolean sumarPuntos) {
-        if (tareaTurno != null) tareaTurno.cancel(false);
+        if(tareaTurno != null) tareaTurno.cancel(false);
 
         synchronized (lock) {
-            if (!jugadoresEnRonda.contains(jugador)) return;
-
             if (sumarPuntos) {
-                int puntosRonda = reglas.calcularPuntosMesa(cartasJugadores.get(jugador));
-                String nombre = jugador.getNombreUsuario();
-                int puntosActuales = puntajesGlobales.getOrDefault(nombre, 0);
-                int total = puntosActuales + puntosRonda;
-
-                puntajesGlobales.put(nombre, total);
-                broadcast(new Mensaje(TipoMensaje.MENSAJE_CHAT, nombre + " se planta con " + puntosRonda + " (Total: " + total + ")"));
+                int puntos = reglas.calcularPuntosMesa(cartasJugadores.get(jugador));
+                if (puntos > 0) {
+                    String nombre = jugador.getNombreUsuario();
+                    int total = puntajesGlobales.get(nombre) + puntos;
+                    puntajesGlobales.put(nombre, total);
+                    broadcast(new Mensaje(TipoMensaje.MENSAJE_CHAT, nombre + " se planta con " + puntos + " (Total: " + total + ")"));
+                }
             }
-
-            int idx = jugadoresEnRonda.indexOf(jugador);
-            boolean estabaAntes = idx < indiceTurno;
-            jugadoresEnRonda.remove(jugador);
-
-            if (estabaAntes) indiceTurno--;
-            if (indiceTurno < 0) indiceTurno = 0;
+            sacarDeRondaInterno(jugador);
         }
+    }
+
+    private void sacarDeRondaInterno(ClientHandler jugador) {
+        int indexJugador = jugadoresEnRonda.indexOf(jugador);
+        if (indexJugador == -1) return;
+
+        boolean estabaAntesDeMi = indexJugador < indiceTurno;
+        jugadoresEnRonda.remove(jugador);
+
+        if (estabaAntesDeMi) indiceTurno--;
+        if (indiceTurno < 0) indiceTurno = 0;
     }
 
     private void activarSeleccionObjetivo(ClientHandler jugador, Carta carta) {
         if (tareaTurno != null) tareaTurno.cancel(false);
         esperandoObjetivo = true;
         cartaEspecialPendiente = carta;
+
         List<String> rivales;
         synchronized (lock) {
-            rivales = jugadores.stream().map(ClientHandler::getNombreUsuario)
-                    .filter(n -> !n.equals(jugador.getNombreUsuario())).collect(Collectors.toList());
+            rivales = jugadores.stream()
+                    .map(ClientHandler::getNombreUsuario)
+                    .filter(n -> !n.equals(jugador.getNombreUsuario()))
+                    .collect(Collectors.toList());
         }
+
         List<String> payload = new ArrayList<>();
         payload.add(carta.getAccion().toString());
         payload.addAll(rivales);
+
         jugador.enviarMensaje(new Mensaje(TipoMensaje.SOLICITAR_OBJETIVO, payload.toArray(new String[0])));
     }
 
@@ -312,7 +330,7 @@ public class GameManager {
             broadcast(new Mensaje(TipoMensaje.MENSAJE_CHAT, origen.getNombreUsuario() + " usó " + accion));
 
             if (accion == AccionEspecial.FREEZE) {
-                sacarDeRonda(destino, true); // Freeze planta al jugador con puntos
+                sacarDeRonda(destino, true);
                 synchronized (lock) {
                     if (jugadoresEnRonda.isEmpty()) scheduler.schedule(this::finDeRonda, 100, TimeUnit.MILLISECONDS);
                     else if (destino.equals(origen)) iniciarTurno();
@@ -341,7 +359,7 @@ public class GameManager {
         synchronized(lock) { actual = getJugadorActual(); }
         if (actual != null) {
             broadcast(new Mensaje(TipoMensaje.ERROR, "¡Tiempo agotado!"));
-            sacarDeRonda(actual, true); // Se planta por tiempo
+            sacarDeRonda(actual, true);
             iniciarTurno();
         }
     }
@@ -361,20 +379,20 @@ public class GameManager {
     private void finDeRonda() {
         broadcast(new Mensaje(TipoMensaje.MENSAJE_CHAT, "--- FIN DE LA RONDA ---"));
 
-        // VERIFICAR SI ALGUIEN GANÓ (200 Puntos)
         String ganador = null;
-        for (Map.Entry<String, Integer> entry : puntajesGlobales.entrySet()) {
-            broadcast(new Mensaje(TipoMensaje.MENSAJE_CHAT, entry.getKey() + ": " + entry.getValue() + " pts"));
+        StringBuilder sb = new StringBuilder("PUNTAJES:\n");
+        for(Map.Entry<String, Integer> entry : puntajesGlobales.entrySet()) {
+            sb.append(entry.getKey()).append(": ").append(entry.getValue()).append("\n");
             if (entry.getValue() >= 200) ganador = entry.getKey();
         }
+        broadcast(new Mensaje(TipoMensaje.MENSAJE_CHAT, sb.toString()));
 
         if (ganador != null) {
             broadcast(new Mensaje(TipoMensaje.ERROR, "¡GANADOR DEL JUEGO: " + ganador + "!"));
-            // Reiniciar juego completo o cerrar sala
             juegoIniciado = false;
         } else {
             try { Thread.sleep(4000); } catch (Exception e) {}
-            iniciarPartida(); // Nueva ronda
+            iniciarPartida();
         }
     }
 
@@ -397,16 +415,15 @@ public class GameManager {
 
     private void enviarEstadoJuego() {
         for (ClientHandler e : espectadores) enviarEstadoA(e);
-
         Map<String, List<Carta>> estadoGlobal = new HashMap<>();
         List<ClientHandler> targets;
         synchronized (lock) {
             for (ClientHandler h : jugadores) estadoGlobal.put(h.getNombreUsuario(), new ArrayList<>(cartasJugadores.get(h)));
             targets = new ArrayList<>(jugadores);
         }
-        Mensaje msgOps = new Mensaje(TipoMensaje.ACTUALIZAR_OPONENTES, estadoGlobal);
+        Mensaje msgOponentes = new Mensaje(TipoMensaje.ACTUALIZAR_OPONENTES, estadoGlobal);
         for(ClientHandler j : targets) {
-            j.enviarMensaje(msgOps);
+            j.enviarMensaje(msgOponentes);
             List<Carta> miMano;
             synchronized (lock) { miMano = new ArrayList<>(cartasJugadores.get(j)); }
             j.enviarMensaje(new Mensaje(TipoMensaje.ACTUALIZAR_TABLERO, miMano));

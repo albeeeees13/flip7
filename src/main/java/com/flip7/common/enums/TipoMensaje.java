@@ -17,4 +17,5 @@ public enum TipoMensaje {
     MENSAJE_CHAT,
     FIN_JUEGO,
     ACTUALIZAR_OPONENTES,
+    ACTUALIZAR_RANKING,
 }

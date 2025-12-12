@@ -37,7 +37,7 @@ public class Carta implements Serializable {
         return (tipo == Tipo.NUMERO) ? String.valueOf(valor) : accion.toString();
     }
 
-    // --- ESTO ES LO QUE TE FALTA PARA ARREGLAR EL BUST Y SECOND CHANCE ---
+    // --- ESTO ES VITAL PARA QUE SE PUEDAN BORRAR LAS CARTAS ---
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
