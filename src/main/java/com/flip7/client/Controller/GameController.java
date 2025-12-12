@@ -6,13 +6,14 @@ import com.flip7.client.network.ClientConnection;
 import com.flip7.client.ui.LoginWindow;
 import com.flip7.common.enums.TipoMensaje;
 import com.flip7.common.network.Mensaje;
-
+import com.flip7.common.model.Carta;
+import java.util.List;
 import javax.swing.*;
 
 public class GameController {
 
     private ClientConnection connection;
-    // 1. CORRECCIÓN: Agregamos estas variables para que no den error
+
     private JFrame currentView;
     private LoginWindow loginWindow;
 
@@ -25,17 +26,14 @@ public class GameController {
 
     public void setLoginWindow(LoginWindow window) {
         this.loginWindow = window;
-        this.currentView = window; // Actualizamos la vista actual también
+        this.currentView = window;
     }
 
-    // 2. CORRECCIÓN: Actualizamos los parámetros para que coincidan con LoginWindow (5 datos)
     public void conectar(String ip, int puerto, String usuario, String password, String accion) {
         try {
-            // Creamos la conexión y arrancamos el hilo
             connection = new ClientConnection(ip, puerto, this);
             new Thread(connection).start();
 
-            // Enviamos el login con usuario y contraseña
             String payload = usuario + "," + password;
             connection.enviarMensaje(new Mensaje(TipoMensaje.LOGIN, payload));
 
@@ -50,28 +48,52 @@ public class GameController {
 
         switch (msj.getTipo()) {
             case LOGIN_EXITO:
-                JOptionPane.showMessageDialog(currentView, "¡Conectado! Bienvenido " + msj.getContenido());
-                abrirLobby(); // Cambiamos de ventana
-                break;
-
-            case ERROR:
-                JOptionPane.showMessageDialog(currentView, "Error: " + msj.getContenido());
+                JOptionPane.showMessageDialog(currentView, "¡Conectado! " + msj.getContenido());
+                abrirLobby();
                 break;
 
             case UNIRSE_SALA:
+
                 abrirJuego();
                 break;
 
             case LISTA_SALAS:
-
                 if (currentView instanceof LobbyWindow) {
+                    // Actualizamos la lista del lobby
                     String[] salas = (String[]) msj.getContenido();
                     ((LobbyWindow) currentView).actualizarListaSalas(salas);
                 }
                 break;
 
-            case ACTUALIZAR_TABLERO:
 
+            case ACTUALIZAR_TABLERO:
+                if (currentView instanceof GameWindow) {
+                    Object contenido = msj.getContenido();
+
+
+                    if (contenido instanceof List) {
+                        List<Carta> cartas = (List<Carta>) contenido;
+                        ((GameWindow) currentView).actualizarMesa(cartas);
+                    }
+
+                    else if (contenido instanceof String) {
+                        String texto = (String) contenido;
+
+                        currentView.setTitle("Flip 7 - " + texto);
+                    }
+                }
+                break;
+
+            case ERROR:
+                JOptionPane.showMessageDialog(currentView, "⚠️ " + msj.getContenido());
+                break;
+
+            case INICIO_JUEGO:
+                JOptionPane.showMessageDialog(currentView, "🎮 " + msj.getContenido());
+                break;
+
+            case MENSAJE_CHAT:
+                JOptionPane.showMessageDialog(currentView, "💬 " + msj.getContenido());
                 break;
         }
     }
