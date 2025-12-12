@@ -146,8 +146,11 @@ public class GameController {
         }
     }
 
-    public void crearSala() {
-        if (connection != null) connection.enviarMensaje(new Mensaje(TipoMensaje.CREAR_SALA, null));
+    public void crearSala(int limite) {
+        if (connection != null) {
+
+            connection.enviarMensaje(new Mensaje(TipoMensaje.CREAR_SALA, String.valueOf(limite)));
+        }
     }
 
     public void unirseSala(String idSala) {

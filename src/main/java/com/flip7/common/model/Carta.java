@@ -8,12 +8,8 @@ public class Carta implements Serializable {
     public enum Tipo { NUMERO, ACCION, MODIFICADOR }
 
     public enum AccionEspecial {
-        NINGUNA,
-        FREEZE,
-        FLIP_3,
-        SECOND_CHANCE,
-        SUMA_2, SUMA_4, SUMA_6, SUMA_8, SUMA_10,
-        MULTIPLICA_X2
+        NINGUNA, FREEZE, FLIP_3, SECOND_CHANCE,
+        SUMA_2, SUMA_4, SUMA_6, SUMA_8, SUMA_10, MULTIPLICA_X2
     }
 
     private int valor;
@@ -41,7 +37,7 @@ public class Carta implements Serializable {
         return (tipo == Tipo.NUMERO) ? String.valueOf(valor) : accion.toString();
     }
 
-    // --- ¡ESTO ES LO NUEVO QUE ARREGLA EL SECOND CHANCE INFINITO! ---
+    // --- ESTO ES LO QUE TE FALTA PARA ARREGLAR EL BUST Y SECOND CHANCE ---
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
