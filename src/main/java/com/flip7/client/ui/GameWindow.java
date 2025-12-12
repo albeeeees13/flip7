@@ -1,65 +1,127 @@
 package com.flip7.client.ui;
 
 import com.flip7.client.Controller.GameController;
-import com.flip7.common.enums.TipoMensaje; // <--- SI ESTO FALTA, DA ERROR
+import com.flip7.common.enums.TipoMensaje;
 import com.flip7.common.model.Carta;
+import com.flip7.common.network.Mensaje;
+
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.util.List;
 
 public class GameWindow extends JFrame {
 
-    // --- ¡OJO KEVIN! ESTAS 3 LÍNEAS SON LAS QUE TE FALTABAN ---
-    // Si no pones esto aquí, Java no sabe qué es "panelMesa" ni "btnFlip"
     private GameController controller;
-    private JPanel panelMesa;
+    private JPanel panelMesa; // Zona cartas
+    private JPanel panelLateral; // Zona Chat/Info
+    private JTextArea areaChat;
+    private JTextField inputChat;
     private JButton btnFlip, btnPlantarse;
-    // -----------------------------------------------------------
 
     public GameWindow(GameController controller) {
         this.controller = controller;
-        // Si esto da rojo, es porque no hiciste el PASO 1 (GameController)
         this.controller.setCurrentView(this);
 
-        setTitle("Flip 7 - En Juego");
-        setSize(800, 600);
+        setTitle("Flip 7 - Mesa de Juego");
+        setSize(1000, 700); // Hacemos la ventana más ancha
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); // Importante para cerrar procesos
         setLayout(new BorderLayout());
 
-        // Panel Mesa
-        panelMesa = new JPanel();
-        panelMesa.setBackground(new Color(34, 139, 34));
-        add(panelMesa, BorderLayout.CENTER);
 
-        // Panel Botones
+        panelMesa = new JPanel();
+        panelMesa.setBackground(new Color(39, 119, 20)); // Verde tapete más elegante
+        panelMesa.setLayout(new FlowLayout(FlowLayout.CENTER, 10, 20)); // Cartas centradas
+
+
+        JScrollPane scrollMesa = new JScrollPane(panelMesa);
+        scrollMesa.setBorder(null); // Sin borde feo
+        add(scrollMesa, BorderLayout.CENTER);
+
+
+
+        panelLateral = new JPanel();
+        panelLateral.setLayout(new BorderLayout());
+        panelLateral.setPreferredSize(new Dimension(250, 0));
+        panelLateral.setBorder(BorderFactory.createMatteBorder(0, 2, 0, 0, Color.DARK_GRAY));
+
+
+        areaChat = new JTextArea();
+        areaChat.setEditable(false);
+        areaChat.setLineWrap(true);
+        areaChat.setWrapStyleWord(true);
+        areaChat.setFont(new Font("Consolas", Font.PLAIN, 12));
+        areaChat.append("--- BIENVENIDO A FLIP 7 ---\n");
+
+        JScrollPane scrollChat = new JScrollPane(areaChat);
+        panelLateral.add(scrollChat, BorderLayout.CENTER);
+
+        // Input de Chat
+        JPanel panelInput = new JPanel(new BorderLayout());
+        inputChat = new JTextField();
+        JButton btnEnviar = new JButton(">");
+
+        panelInput.add(inputChat, BorderLayout.CENTER);
+        panelInput.add(btnEnviar, BorderLayout.EAST);
+        panelLateral.add(panelInput, BorderLayout.SOUTH);
+
+        add(panelLateral, BorderLayout.EAST);
+
+
+        // --- 3. PANEL INFERIOR (BOTONES) ---
         JPanel panelControles = new JPanel();
-        btnFlip = new JButton("FLIP (Sacar)");
-        btnPlantarse = new JButton("Plantarse");
+        panelControles.setBackground(new Color(30, 30, 30)); // Gris oscuro
+        panelControles.setBorder(new EmptyBorder(10, 10, 10, 10));
+
+        btnFlip = crearBotonEstilizado("FLIP (Sacar)", new Color(70, 130, 180));
+        btnPlantarse = crearBotonEstilizado("PLANTARSE", new Color(178, 34, 34));
 
         panelControles.add(btnFlip);
+        panelControles.add(Box.createHorizontalStrut(20)); // Espacio
         panelControles.add(btnPlantarse);
+
         add(panelControles, BorderLayout.SOUTH);
 
-        // Eventos
-        btnFlip.addActionListener(e -> {
-            controller.enviarAccionJuego(TipoMensaje.ACCION_SACAR);
-        });
+        // --- EVENTOS ---
+        btnFlip.addActionListener(e -> controller.enviarAccionJuego(TipoMensaje.ACCION_SACAR));
+        btnPlantarse.addActionListener(e -> controller.enviarAccionJuego(TipoMensaje.ACCION_PLANTARSE));
 
-        btnPlantarse.addActionListener(e -> {
-            controller.enviarAccionJuego(TipoMensaje.ACCION_PLANTARSE);
-        });
+        // Evento Chat (Enter o Botón)
+        ActionListener enviarChatAction = e -> {
+            String texto = inputChat.getText().trim();
+            if (!texto.isEmpty()) {
+                controller.enviarMensajeChat(texto);
+                inputChat.setText("");
+            }
+        };
+        inputChat.addActionListener(enviarChatAction);
+        btnEnviar.addActionListener(enviarChatAction);
     }
 
+    private JButton crearBotonEstilizado(String texto, Color color) {
+        JButton btn = new JButton(texto);
+        btn.setBackground(color);
+        btn.setForeground(Color.WHITE);
+        btn.setFont(new Font("Arial", Font.BOLD, 14));
+        btn.setFocusPainted(false);
+        btn.setPreferredSize(new Dimension(150, 40));
+        return btn;
+    }
+
+    // Dibuja las cartas usando nuestro NUEVO CartaPanel
     public void actualizarMesa(List<Carta> cartas) {
         panelMesa.removeAll();
         for(Carta c : cartas) {
-            JLabel labelCarta = new JLabel(String.valueOf(c.getValor()));
-            labelCarta.setBorder(BorderFactory.createLineBorder(Color.BLACK));
-            labelCarta.setPreferredSize(new Dimension(80, 120));
-            labelCarta.setOpaque(true);
-            labelCarta.setBackground(Color.WHITE);
-            panelMesa.add(labelCarta);
+            panelMesa.add(new CartaPanel(c)); // <--- AQUÍ USAMOS LA CLASE QUE CREAMOS
         }
         panelMesa.revalidate();
         panelMesa.repaint();
+    }
+
+    // Método para escribir en el chat lateral
+    public void agregarMensajeChat(String mensaje) {
+        areaChat.append(mensaje + "\n");
+        // Auto-scroll hacia abajo
+        areaChat.setCaretPosition(areaChat.getDocument().getLength());
     }
 }

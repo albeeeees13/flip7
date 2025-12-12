@@ -114,6 +114,11 @@ public class GameController {
     public void unirseSala(String idSala) {
         if (connection != null) connection.enviarMensaje(new Mensaje(TipoMensaje.UNIRSE_SALA, idSala));
     }
+    public void enviarMensajeChat(String texto) {
+        if (connection != null) {
+            connection.enviarMensaje(new Mensaje(TipoMensaje.MENSAJE_CHAT, texto));
+        }
+    }
 
     private void abrirJuego() {
         if (currentView != null) currentView.dispose();

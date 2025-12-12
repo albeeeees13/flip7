@@ -51,7 +51,7 @@ public class CartaPanel extends JPanel {
 
         // Fuente pequeña para las esquinas
         g2.setFont(new Font("Arial", Font.BOLD, 15));
-        g2.drawString(texto, 12, 25); 
+        g2.drawString(texto, 12, 25);
         g2.drawString(texto, 75, 135);
     }
 
