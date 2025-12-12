@@ -30,7 +30,7 @@ public class Mazo {
         agregarEspeciales(3, Tipo.ACCION, AccionEspecial.SECOND_CHANCE, 0);
 
 
-       
+
         agregarEspeciales(2, Tipo.MODIFICADOR, AccionEspecial.SUMA_2, 2);
         agregarEspeciales(2, Tipo.MODIFICADOR, AccionEspecial.SUMA_4, 4);
         agregarEspeciales(2, Tipo.MODIFICADOR, AccionEspecial.SUMA_6, 6);
