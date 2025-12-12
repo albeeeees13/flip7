@@ -9,11 +9,18 @@ import java.awt.*;
 
 public class CartaPanel extends JPanel {
     private Carta carta;
+    private boolean gris = false; // Nueva variable para el efecto BUST
 
     public CartaPanel(Carta carta) {
         this.carta = carta;
-        setPreferredSize(new Dimension(90, 130)); // Un poco más pequeñas para que quepan
+        setPreferredSize(new Dimension(90, 130));
         setOpaque(false);
+    }
+
+    // Método para activar el modo "Muerto/Bust"
+    public void setGris(boolean gris) {
+        this.gris = gris;
+        repaint();
     }
 
     @Override
@@ -22,7 +29,7 @@ public class CartaPanel extends JPanel {
         Graphics2D g2 = (Graphics2D) g;
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        // 1. Determinar Color y Texto según el TIPO
+        // 1. Determinar Color Base
         Color colorFondo = Color.GRAY;
         String textoCentro = "";
         String textoEsquina = "";
@@ -45,23 +52,22 @@ public class CartaPanel extends JPanel {
             switch (carta.getAccion()) {
                 case FREEZE:
                     colorFondo = new Color(135, 206, 250); // Azul Cielo
-                    textoCentro = "FREEZE";
-                    textoEsquina = "❄";
-                    break;
+                    textoCentro = "FREEZE"; textoEsquina = "❄"; break;
                 case FLIP_3:
                     colorFondo = new Color(255, 215, 0); // Amarillo
-                    textoCentro = "FLIP 3";
-                    textoEsquina = "⚡";
-                    break;
+                    textoCentro = "FLIP 3"; textoEsquina = "⚡"; break;
                 case SECOND_CHANCE:
-                    colorFondo = new Color(220, 20, 60); // Rojo Pasión
-                    textoCentro = "2nd CHANCE";
-                    textoEsquina = "❤"; // Corazón
-                    break;
+                    colorFondo = new Color(220, 20, 60); // Rojo
+                    textoCentro = "2nd CHANCE"; textoEsquina = "❤"; break;
             }
         }
 
-        // 2. Dibujar la Carta
+        // 2. Si está en modo GRIS (Bust), cambiamos el color a gris oscuro
+        if (gris) {
+            colorFondo = Color.DARK_GRAY;
+        }
+
+        // 3. Dibujar Fondo
         g2.setColor(colorFondo);
         g2.fillRoundRect(2, 2, getWidth()-4, getHeight()-4, 15, 15);
 
@@ -69,10 +75,10 @@ public class CartaPanel extends JPanel {
         g2.setStroke(new BasicStroke(3));
         g2.drawRoundRect(2, 2, getWidth()-4, getHeight()-4, 15, 15);
 
-        // 3. Dibujar Texto
+        // 4. Dibujar Texto
         g2.setColor(Color.WHITE);
+        if (gris) g2.setColor(new Color(200, 200, 200)); // Texto apagado si es bust
 
-        // Texto Central (Ajustar tamaño si es largo como "FREEZE")
         int tamanoFuente = textoCentro.length() > 2 ? 20 : 40;
         g2.setFont(new Font("Arial", Font.BOLD, tamanoFuente));
         FontMetrics fm = g2.getFontMetrics();
@@ -80,7 +86,6 @@ public class CartaPanel extends JPanel {
         int y = (getHeight() + fm.getAscent()) / 2 - 5;
         g2.drawString(textoCentro, x, y);
 
-        // Texto Esquinas
         g2.setFont(new Font("Arial", Font.BOLD, 14));
         g2.drawString(textoEsquina, 8, 20);
         g2.drawString(textoEsquina, getWidth() - 25, getHeight() - 10);
@@ -88,10 +93,10 @@ public class CartaPanel extends JPanel {
 
     private Color getColorNumero(int v) {
         if (v == 0) return Color.GRAY;
-        if (v <= 2) return new Color(65, 105, 225); // Azul
-        if (v <= 4) return new Color(34, 139, 34);  // Verde
-        if (v <= 7) return new Color(178, 34, 34);  // Rojo (Riesgo)
-        if (v <= 9) return new Color(128, 0, 128);  // Morado
-        return new Color(218, 165, 32);             // Dorado (Valiosos)
+        if (v <= 2) return new Color(65, 105, 225);
+        if (v <= 4) return new Color(34, 139, 34);
+        if (v <= 7) return new Color(178, 34, 34);
+        if (v <= 9) return new Color(128, 0, 128);
+        return new Color(218, 165, 32);
     }
 }
