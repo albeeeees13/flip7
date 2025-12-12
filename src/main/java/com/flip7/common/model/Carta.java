@@ -38,7 +38,7 @@ public class Carta implements Serializable {
     public int getValor() { return valor; }
     public Tipo getTipo() { return tipo; }
     public AccionEspecial getAccion() { return accion; }
-    
+
     @Override
     public String toString() {
         if (tipo == Tipo.NUMERO) return String.valueOf(valor);
