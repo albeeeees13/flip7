@@ -101,6 +101,15 @@ public class GameController {
                     }
                 }
                 break;
+            case ACTUALIZAR_OPONENTES:
+                if (currentView instanceof GameWindow) {
+
+                    java.util.Map<String, java.util.List<Carta>> oponentes =
+                            (java.util.Map<String, java.util.List<Carta>>) msj.getContenido();
+
+                    ((GameWindow) currentView).actualizarOponentes(oponentes);
+                }
+                break;
 
 
 
