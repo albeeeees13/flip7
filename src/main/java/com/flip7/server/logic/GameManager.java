@@ -17,13 +17,13 @@ public class GameManager {
     private boolean juegoIniciado = false;
     private MotorReglas reglas;
 
-    // Mapa: Jugador -> Sus Cartas
+    // Mapa: Jugador -> Sus Cartas en la ronda actual
     private Map<ClientHandler, List<Carta>> cartasJugadores;
 
     private Mazo mazo;
     private Timer timerTurno;
 
-    // Estado para Cartas Especiales
+    // Estado para Cartas Especiales (Pausa para elegir objetivo)
     private boolean esperandoObjetivo = false;
     private Carta cartaEspecialPendiente = null;
 
@@ -53,12 +53,12 @@ public class GameManager {
     }
 
     private void iniciarTurno() {
-        if (esperandoObjetivo) return; // No cambiar turno si estamos esperando respuesta
+        if (esperandoObjetivo) return; // No hacemos nada si estamos esperando respuesta de un popup
 
         ClientHandler actual = getJugadorActual();
         broadcast(new Mensaje(TipoMensaje.ACTUALIZAR_TABLERO, "Turno de: " + actual.getNombreUsuario()));
 
-        // Timer de 30s para pensar
+        // Timer de 30 segundos para pensar
         if (timerTurno != null) timerTurno.cancel();
         timerTurno = new Timer();
         timerTurno.schedule(new TimerTask() {
@@ -69,16 +69,17 @@ public class GameManager {
         }, 30000);
     }
 
+    // MÉTODO PRINCIPAL DE ENTRADA (Recibe el Mensaje completo)
     public synchronized void procesarJugada(ClientHandler solicitante, Mensaje msj) {
+        TipoMensaje tipo = msj.getTipo();
 
-        TipoMensaje tipo = msj.getTipo(); // Sacamos el tipo aquí
-
+        // Validaciones de turno (excepto si estamos respondiendo a un objetivo)
         if (!solicitante.equals(getJugadorActual()) && tipo != TipoMensaje.SELECCIONAR_OBJETIVO) {
             solicitante.enviarMensaje(new Mensaje(TipoMensaje.ERROR, "No es tu turno"));
             return;
         }
 
-
+        // Si el juego está pausado esperando un objetivo, ignoramos otras acciones
         if (esperandoObjetivo && tipo != TipoMensaje.SELECCIONAR_OBJETIVO) return;
 
         switch (tipo) {
@@ -89,17 +90,10 @@ public class GameManager {
                 plantarse(solicitante);
                 break;
             case SELECCIONAR_OBJETIVO:
-
+                // Recuperamos el nombre del objetivo seleccionado
                 String objetivo = (String) msj.getContenido();
                 aplicarEfectoEspecial(solicitante, objetivo);
                 break;
-        }
-    }
-
-
-    public synchronized void recibirObjetivo(ClientHandler solicitante, String nombreObjetivo) {
-        if(esperandoObjetivo && solicitante.equals(getJugadorActual())) {
-            aplicarEfectoEspecial(solicitante, nombreObjetivo);
         }
     }
 
@@ -109,72 +103,82 @@ public class GameManager {
 
         if (carta == null) {
             broadcast(new Mensaje(TipoMensaje.ERROR, "Fin del mazo. Ronda terminada."));
-            // Lógica de fin de ronda...
+            // Aquí iría lógica de fin de ronda por mazo vacío
             return;
         }
 
         List<Carta> susCartas = cartasJugadores.get(jugador);
 
-        // 1. REGLA BUST (Muerte súbita por repetida)
+        // --- AQUÍ ESTÁ LA LÓGICA DE BUST ---
+
+        // 1. Verificamos si es Bust ANTES de añadirla definitivamente
         boolean esBust = reglas.verificarBust(susCartas, carta);
 
+        // 2. Agregamos la carta SIEMPRE para que el cliente la vea (aunque sea la repetida)
+        susCartas.add(carta);
+        enviarEstadoJuego(); // El cliente dibuja la carta normal
+
         if (esBust) {
-            // Verificar si tiene Second Chance para salvarse
+            // Verificar si tiene Second Chance
             Optional<Carta> secondChance = susCartas.stream()
                     .filter(c -> c.getAccion() == AccionEspecial.SECOND_CHANCE).findFirst();
 
             if (secondChance.isPresent()) {
-                // SE SALVA: Se descarta la carta repetida Y el Second Chance
+
+                try { Thread.sleep(1500); } catch (InterruptedException e) {} // Pausa para drama
+
                 susCartas.remove(secondChance.get());
+                susCartas.remove(carta);
+
                 broadcast(new Mensaje(TipoMensaje.MENSAJE_CHAT, "¡" + jugador.getNombreUsuario() + " usó SECOND CHANCE!"));
-                // Sigue jugando su turno
                 enviarEstadoJuego();
                 iniciarTurno();
             } else {
-                // PIERDE TODO
+
+                jugador.enviarMensaje(new Mensaje(TipoMensaje.ERROR, "BUST"));
                 broadcast(new Mensaje(TipoMensaje.MENSAJE_CHAT, "¡BUST! " + jugador.getNombreUsuario() + " sacó otro " + carta.getValor()));
-                susCartas.clear(); // Pierde puntos
-                enviarEstadoJuego();
+
+
+                susCartas.clear();
+
+
+
                 siguienteTurno();
             }
             return;
         }
 
-        // Si no es Bust, añadimos la carta
-        susCartas.add(carta);
-        enviarEstadoJuego();
 
-        // 2. VERIFICAR SI ES CARTA DE ACCIÓN QUE REQUIERE OBJETIVO
+
+
         if (carta.getTipo() == Tipo.ACCION &&
                 (carta.getAccion() == AccionEspecial.FREEZE || carta.getAccion() == AccionEspecial.FLIP_3)) {
 
             esperandoObjetivo = true;
             cartaEspecialPendiente = carta;
 
-            // Enviamos lista de rivales al cliente para el Popup
+
             List<String> rivales = jugadores.stream()
                     .map(ClientHandler::getNombreUsuario)
                     .filter(n -> !n.equals(jugador.getNombreUsuario()))
                     .collect(Collectors.toList());
 
-            // Construimos array: [NombreAccion, Rival1, Rival2...]
+
             List<String> payload = new ArrayList<>();
             payload.add(carta.getAccion().toString());
             payload.addAll(rivales);
 
             jugador.enviarMensaje(new Mensaje(TipoMensaje.SOLICITAR_OBJETIVO, payload.toArray(new String[0])));
-            return; // PAUSA AQUÍ HASTA QUE RESPONDA
+            return;
         }
 
-        // Si es normal, sigue su turno
         iniciarTurno();
     }
 
     private void aplicarEfectoEspecial(ClientHandler origen, String nombreDestino) {
         esperandoObjetivo = false;
-        ClientHandler destino = origen; // Por defecto a sí mismo ("SELF")
+        ClientHandler destino = origen;
 
-        // Buscar el jugador destino
         if (!nombreDestino.equals("SELF")) {
             for (ClientHandler h : jugadores) {
                 if (h.getNombreUsuario().equals(nombreDestino)) {
@@ -188,16 +192,9 @@ public class GameManager {
         broadcast(new Mensaje(TipoMensaje.MENSAJE_CHAT,
                 origen.getNombreUsuario() + " aplicó " + accion + " a " + destino.getNombreUsuario()));
 
-        if (accion == AccionEspecial.FREEZE) {
-            // Lógica Freeze: El destino pierde su turno o queda inactivo
-            // (Para simplificar ahora, solo avisamos)
-        }
-        else if (accion == AccionEspecial.FLIP_3) {
-            // Lógica Flip 3: Forzar sacar 3 cartas
-        }
 
         cartaEspecialPendiente = null;
-        iniciarTurno(); // Continuamos
+        iniciarTurno();
     }
 
     private void plantarse(ClientHandler jugador) {
@@ -224,13 +221,10 @@ public class GameManager {
         for (ClientHandler j : jugadores) j.enviarMensaje(msg);
     }
 
-    // Envía el estado completo (Tu mesa + Oponentes)
     private void enviarEstadoJuego() {
-        // Enviar a cada jugador sus cartas y un resumen de los otros
-        // (Simplificado: Mandamos actualizar tablero a todos)
+        // Enviar a cada jugador sus propias cartas para que se dibujen
         for(ClientHandler j : jugadores) {
             j.enviarMensaje(new Mensaje(TipoMensaje.ACTUALIZAR_TABLERO, cartasJugadores.get(j)));
-            // Aquí faltaría enviar el mapa de oponentes para la vista dividida
         }
     }
 }

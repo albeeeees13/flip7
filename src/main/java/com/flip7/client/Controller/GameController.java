@@ -57,7 +57,17 @@ public class GameController {
 
                 abrirJuego();
                 break;
+            case ERROR:
+                String errorMsg = (String) msj.getContenido();
+                if (errorMsg.equals("BUST")) {
 
+                    if (currentView instanceof GameWindow) {
+                        ((GameWindow) currentView).mostrarEfectoBust();
+                    }
+                } else {
+                    JOptionPane.showMessageDialog(currentView, "⚠️ " + errorMsg);
+                }
+                break;
             case LISTA_SALAS:
                 if (currentView instanceof LobbyWindow) {
                     // Actualizamos la lista del lobby
