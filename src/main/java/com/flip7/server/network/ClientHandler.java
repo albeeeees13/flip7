@@ -128,14 +128,14 @@ public class ClientHandler implements Runnable {
                 break;
             case ACCION_SACAR:
             case ACCION_PLANTARSE:
+            case SELECCIONAR_OBJETIVO:
                 if (salaActual != null) {
 
-                    salaActual.procesarJugada(this, msj.getTipo());
+                    salaActual.procesarJugada(this, msj);
                 } else {
                     enviarMensaje(new Mensaje(TipoMensaje.ERROR, "No estás en una partida activa."));
                 }
                 break;
-
             default:
                 System.out.println("Mensaje no manejado o desconocido: " + msj.getTipo());
         }

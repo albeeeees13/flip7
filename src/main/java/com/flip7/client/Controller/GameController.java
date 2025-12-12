@@ -7,6 +7,7 @@ import com.flip7.client.ui.LoginWindow;
 import com.flip7.common.enums.TipoMensaje;
 import com.flip7.common.network.Mensaje;
 import com.flip7.common.model.Carta;
+import com.flip7.client.ui.DialogoObjetivo;
 import java.util.List;
 import javax.swing.*;
 
@@ -65,6 +66,17 @@ public class GameController {
                 }
                 break;
 
+            case SOLICITAR_OBJETIVO:
+
+                String[] datos = (String[]) msj.getContenido();
+                String nombreAccion = datos[0];
+
+
+                String[] rivales = new String[datos.length - 1];
+                System.arraycopy(datos, 1, rivales, 0, rivales.length);
+
+                mostrarSelectorObjetivo(nombreAccion, rivales);
+                break;
 
             case ACTUALIZAR_TABLERO:
                 if (currentView instanceof GameWindow) {
@@ -109,6 +121,21 @@ public class GameController {
         LobbyWindow lobby = new LobbyWindow(this);
         lobby.setVisible(true);
         this.currentView = lobby;
+    }
+    private void mostrarSelectorObjetivo(String accion, String[] rivales) {
+
+        if (currentView instanceof JFrame) {
+
+            // CORRECCIÓN: Hacemos el Cast explícito a (JFrame)
+            DialogoObjetivo dialog = new DialogoObjetivo((JFrame) currentView, rivales, accion);
+            dialog.setVisible(true);
+
+            String elegido = dialog.getSeleccionado();
+            if (elegido == null) elegido = "SELF";
+
+
+            connection.enviarMensaje(new Mensaje(TipoMensaje.SELECCIONAR_OBJETIVO, elegido));
+        }
     }
 
 
