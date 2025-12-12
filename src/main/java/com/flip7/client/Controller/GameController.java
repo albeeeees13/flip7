@@ -102,7 +102,7 @@ public class GameController {
                 }
                 break;
 
-         
+
 
             case INICIO_JUEGO:
                 JOptionPane.showMessageDialog(currentView, "🎮 " + msj.getContenido());
