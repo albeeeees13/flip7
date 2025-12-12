@@ -43,7 +43,7 @@ public class GameController {
         }
     }
 
-    // Método que recibe mensajes del servidor (Llamado desde ClientConnection)
+
     public void recibirMensaje(Mensaje msj) {
         System.out.println("Cliente recibió: " + msj.getTipo());
 
@@ -54,33 +54,33 @@ public class GameController {
                 break;
 
             case UNIRSE_SALA:
-
                 abrirJuego();
                 break;
+
+
             case ERROR:
                 String errorMsg = (String) msj.getContenido();
                 if (errorMsg.equals("BUST")) {
-
+                    // Animación de perder
                     if (currentView instanceof GameWindow) {
                         ((GameWindow) currentView).mostrarEfectoBust();
                     }
                 } else {
+                    // Error normal (Popup)
                     JOptionPane.showMessageDialog(currentView, "⚠️ " + errorMsg);
                 }
                 break;
+
             case LISTA_SALAS:
                 if (currentView instanceof LobbyWindow) {
-                    // Actualizamos la lista del lobby
                     String[] salas = (String[]) msj.getContenido();
                     ((LobbyWindow) currentView).actualizarListaSalas(salas);
                 }
                 break;
 
             case SOLICITAR_OBJETIVO:
-
                 String[] datos = (String[]) msj.getContenido();
                 String nombreAccion = datos[0];
-
 
                 String[] rivales = new String[datos.length - 1];
                 System.arraycopy(datos, 1, rivales, 0, rivales.length);
@@ -92,23 +92,17 @@ public class GameController {
                 if (currentView instanceof GameWindow) {
                     Object contenido = msj.getContenido();
 
-
                     if (contenido instanceof List) {
                         List<Carta> cartas = (List<Carta>) contenido;
                         ((GameWindow) currentView).actualizarMesa(cartas);
-                    }
-
-                    else if (contenido instanceof String) {
+                    } else if (contenido instanceof String) {
                         String texto = (String) contenido;
-
                         currentView.setTitle("Flip 7 - " + texto);
                     }
                 }
                 break;
 
-            case ERROR:
-                JOptionPane.showMessageDialog(currentView, "⚠️ " + msj.getContenido());
-                break;
+         
 
             case INICIO_JUEGO:
                 JOptionPane.showMessageDialog(currentView, "🎮 " + msj.getContenido());
@@ -118,13 +112,11 @@ public class GameController {
                 if (currentView instanceof GameWindow) {
                     ((GameWindow) currentView).agregarMensajeChat((String) msj.getContenido());
                 } else {
-
                     JOptionPane.showMessageDialog(currentView, "Chat: " + msj.getContenido());
                 }
                 break;
         }
     }
-
 
     private void abrirLobby() {
         if (currentView != null) currentView.dispose();
@@ -132,22 +124,18 @@ public class GameController {
         lobby.setVisible(true);
         this.currentView = lobby;
     }
+
     private void mostrarSelectorObjetivo(String accion, String[] rivales) {
-
         if (currentView instanceof JFrame) {
-
-            // CORRECCIÓN: Hacemos el Cast explícito a (JFrame)
             DialogoObjetivo dialog = new DialogoObjetivo((JFrame) currentView, rivales, accion);
             dialog.setVisible(true);
 
             String elegido = dialog.getSeleccionado();
             if (elegido == null) elegido = "SELF";
 
-
             connection.enviarMensaje(new Mensaje(TipoMensaje.SELECCIONAR_OBJETIVO, elegido));
         }
     }
-
 
     public void crearSala() {
         if (connection != null) connection.enviarMensaje(new Mensaje(TipoMensaje.CREAR_SALA, null));
@@ -156,6 +144,7 @@ public class GameController {
     public void unirseSala(String idSala) {
         if (connection != null) connection.enviarMensaje(new Mensaje(TipoMensaje.UNIRSE_SALA, idSala));
     }
+
     public void enviarMensajeChat(String texto) {
         if (connection != null) {
             connection.enviarMensaje(new Mensaje(TipoMensaje.MENSAJE_CHAT, texto));
@@ -168,6 +157,7 @@ public class GameController {
         game.setVisible(true);
         this.currentView = game;
     }
+
     public void enviarAccionJuego(TipoMensaje accion) {
         if (connection != null) {
             connection.enviarMensaje(new Mensaje(accion, null));
