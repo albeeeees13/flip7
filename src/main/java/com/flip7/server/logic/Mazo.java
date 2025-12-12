@@ -15,13 +15,12 @@ public class Mazo {
     }
 
     private void generarMazo() {
-
+        // 1. NÚMEROS (1 al 12, cantidad = valor)
         for (int i = 1; i <= 12; i++) {
             for (int j = 0; j < i; j++) {
                 cartas.add(new Carta(i));
             }
         }
-        // Hay un 0 [cite: 19, 57]
         cartas.add(new Carta(0));
 
 
@@ -30,13 +29,12 @@ public class Mazo {
         agregarEspeciales(3, Tipo.ACCION, AccionEspecial.SECOND_CHANCE, 0);
 
 
-
         agregarEspeciales(2, Tipo.MODIFICADOR, AccionEspecial.SUMA_2, 2);
         agregarEspeciales(2, Tipo.MODIFICADOR, AccionEspecial.SUMA_4, 4);
         agregarEspeciales(2, Tipo.MODIFICADOR, AccionEspecial.SUMA_6, 6);
         agregarEspeciales(1, Tipo.MODIFICADOR, AccionEspecial.SUMA_8, 8);
         agregarEspeciales(1, Tipo.MODIFICADOR, AccionEspecial.SUMA_10, 10);
-        agregarEspeciales(1, Tipo.MODIFICADOR, AccionEspecial.MULTIPLICA_X2, 0); // [cite: 66]
+        agregarEspeciales(1, Tipo.MODIFICADOR, AccionEspecial.MULTIPLICA_X2, 0);
     }
 
     private void agregarEspeciales(int cantidad, Tipo tipo, AccionEspecial accion, int valor) {

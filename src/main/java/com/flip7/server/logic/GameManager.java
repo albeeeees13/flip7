@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 public class GameManager {
     private String idSala;
     private List<ClientHandler> jugadores;
-    private List<ClientHandler> jugadoresEnRonda; // Nueva lista para saber quién sigue vivo
+    private List<ClientHandler> jugadoresEnRonda;
     private int indiceTurno = 0;
     private boolean juegoIniciado = false;
     private MotorReglas reglas;
@@ -21,7 +21,6 @@ public class GameManager {
     private Mazo mazo;
     private Timer timerTurno;
 
-    // Estado especial
     private boolean esperandoObjetivo = false;
     private Carta cartaEspecialPendiente = null;
 
@@ -44,27 +43,24 @@ public class GameManager {
     private void iniciarPartida() {
         juegoIniciado = true;
         mazo = new Mazo();
-        jugadoresEnRonda = new ArrayList<>(jugadores); // Todos empiezan vivos
+        jugadoresEnRonda = new ArrayList<>(jugadores);
         for(ClientHandler j : jugadores) cartasJugadores.get(j).clear();
 
         broadcast(new Mensaje(TipoMensaje.INICIO_JUEGO, "¡Empieza la ronda!"));
-        enviarEstadoJuego(); // IMPORTANTE: Enviar estado inicial
+        enviarEstadoJuego(); // Limpia tableros visualmente
         iniciarTurno();
     }
 
     private void iniciarTurno() {
         if (esperandoObjetivo) return;
 
-        // Validar que queden jugadores en la ronda
+        // Si no queda nadie vivo, fin de ronda
         if (jugadoresEnRonda.isEmpty()) {
-            finDeRonda();
+            new Thread(this::finDeRonda).start();
             return;
         }
 
-        // Asegurar índice válido
-        if (indiceTurno >= jugadoresEnRonda.size()) {
-            indiceTurno = 0;
-        }
+        if (indiceTurno >= jugadoresEnRonda.size()) indiceTurno = 0;
 
         ClientHandler actual = getJugadorActual();
         broadcast(new Mensaje(TipoMensaje.ACTUALIZAR_TABLERO, "Turno de: " + actual.getNombreUsuario()));
@@ -80,7 +76,6 @@ public class GameManager {
     public synchronized void procesarJugada(ClientHandler solicitante, Mensaje msj) {
         TipoMensaje tipo = msj.getTipo();
 
-        // Si el jugador ya no está en la ronda (congelado o plantado), ignorar
         if (!jugadoresEnRonda.contains(solicitante)) return;
 
         if (!solicitante.equals(getJugadorActual()) && tipo != TipoMensaje.SELECCIONAR_OBJETIVO) {
@@ -99,21 +94,21 @@ public class GameManager {
         }
     }
 
+    // --- AQUÍ ESTÁ LA SOLUCIÓN DEL BUST ---
     private boolean ejecutarRobo(ClientHandler jugador) {
         Carta carta = mazo.robarCarta();
         if (carta == null) return false;
 
         List<Carta> susCartas = cartasJugadores.get(jugador);
 
-        // 1. PRIMERO AGREGAMOS LA CARTA Y ENVIAMOS ESTADO
-        // Esto soluciona que "no aparezcan las cartas"
+        // 1. AGREGAMOS LA CARTA Y ACTUALIZAMOS (Para que veas el 4 repetido)
         susCartas.add(carta);
         enviarEstadoJuego();
 
-        // Pausa pequeña para que se vea la carta salir
-        try { Thread.sleep(500); } catch (Exception e) {}
+        // PAUSA 1: Esperamos 1.5 seg para que veas qué carta salió
+        try { Thread.sleep(1500); } catch (Exception e) {}
 
-        // 2. REGLA BUST
+        // 2. VERIFICAMOS BUST
         boolean esBust = reglas.verificarBust(susCartas, carta);
 
         if (esBust) {
@@ -122,25 +117,34 @@ public class GameManager {
 
             if (secondChance.isPresent()) {
                 // SE SALVA
-                try { Thread.sleep(1000); } catch (Exception e) {}
                 susCartas.remove(secondChance.get());
                 susCartas.remove(carta);
                 broadcast(new Mensaje(TipoMensaje.MENSAJE_CHAT, "¡" + jugador.getNombreUsuario() + " se salvó con SECOND CHANCE!"));
-                enviarEstadoJuego(); // Actualizar mesa limpia
+
+                // Actualizamos mesa (se borran las cartas malas)
+                enviarEstadoJuego();
                 return true;
             } else {
-                // PIERDE
+                // --- BUST CONFIRMADO ---
+
+                // 3. ENVIAMOS SEÑAL DE GRIS (Pero NO borramos cartas todavía)
                 jugador.enviarMensaje(new Mensaje(TipoMensaje.ERROR, "BUST"));
                 broadcast(new Mensaje(TipoMensaje.MENSAJE_CHAT, "¡BUST! " + jugador.getNombreUsuario() + " sacó otro " + carta.getValor()));
 
-                susCartas.clear(); // Pierde todo
+                // PAUSA 2: Esperamos 3 SEGUNDOS viendo las cartas grises (Humillación)
+                try { Thread.sleep(3000); } catch (Exception e) {}
+
+                // 4. AHORA SÍ LIMPIAMOS TODO
+                susCartas.clear();
 
                 // Sacar de la ronda
                 jugadoresEnRonda.remove(jugador);
-                // Ajustar índice si es necesario
                 if (indiceTurno >= jugadoresEnRonda.size()) indiceTurno = 0;
 
-                return false;
+                // 5. Enviamos mesa vacía
+                enviarEstadoJuego();
+
+                return false; // Murió
             }
         }
 
@@ -155,21 +159,23 @@ public class GameManager {
 
     private void sacarCarta(ClientHandler jugador) {
         timerTurno.cancel();
-        boolean sigueVivo = ejecutarRobo(jugador);
+        // IMPORTANTE: Hilo aparte para que los Thread.sleep NO congelen a los otros jugadores
+        new Thread(() -> {
+            boolean sigueVivo = ejecutarRobo(jugador);
 
-        if (!sigueVivo) {
-            // Si murió, ya lo sacamos de la lista en ejecutarRobo, solo iniciamos turno del siguiente
-            iniciarTurno();
-        } else if (!esperandoObjetivo) {
-            // Si sigue vivo y NO está eligiendo objetivo, sigue su turno
-            iniciarTurno();
-        }
+            if (!sigueVivo) {
+                // Si murió, pasamos al siguiente
+                iniciarTurno();
+            } else if (!esperandoObjetivo) {
+                // Si vive y no hay popup, sigue su turno
+                iniciarTurno();
+            }
+        }).start();
     }
 
     private void activarSeleccionObjetivo(ClientHandler jugador, Carta carta) {
         esperandoObjetivo = true;
         cartaEspecialPendiente = carta;
-        // Rivales disponibles (cualquiera en la partida, incluso los plantados, según reglas)
         List<String> rivales = jugadores.stream()
                 .map(ClientHandler::getNombreUsuario)
                 .filter(n -> !n.equals(jugador.getNombreUsuario()))
@@ -184,7 +190,6 @@ public class GameManager {
     private void aplicarEfectoEspecial(ClientHandler origen, String nombreDestino) {
         esperandoObjetivo = false;
         ClientHandler destino = origen;
-
         if (!nombreDestino.equals("SELF")) {
             for (ClientHandler h : jugadores) {
                 if (h.getNombreUsuario().equals(nombreDestino)) {
@@ -197,43 +202,28 @@ public class GameManager {
         broadcast(new Mensaje(TipoMensaje.MENSAJE_CHAT, origen.getNombreUsuario() + " usó " + accion + " en " + destino.getNombreUsuario()));
 
         if (accion == AccionEspecial.FREEZE) {
-
+            broadcast(new Mensaje(TipoMensaje.MENSAJE_CHAT, "❄️ " + destino.getNombreUsuario() + " congelado."));
             if (destino.equals(origen)) {
-
                 plantarse(origen);
             } else {
-
-                int puntos = reglas.calcularPuntosMesa(cartasJugadores.get(destino));
-                broadcast(new Mensaje(TipoMensaje.MENSAJE_CHAT, "❄️ " + destino.getNombreUsuario() + " fue CONGELADO con " + puntos + " puntos."));
-
-
-                jugadoresEnRonda.remove(destino);
-
-
-                if (jugadores.indexOf(destino) < indiceTurno) {
-                    indiceTurno--;
-                }
-                
-                enviarEstadoJuego();
+                plantarse(destino);
                 iniciarTurno();
             }
         }
         else if (accion == AccionEspecial.FLIP_3) {
-            // FLIP 3 en hilo aparte
             final ClientHandler target = destino;
             new Thread(() -> {
                 for (int i = 0; i < 3; i++) {
-                    // Verificar si sigue vivo antes de cada carta
                     if (!jugadoresEnRonda.contains(target)) break;
-
                     boolean vivo = ejecutarRobo(target);
-                    if (!vivo) break; // Si muere, para
+                    if (!vivo) break;
                 }
-                // Al terminar las 3 cartas (si vivió):
-                // Si me ataqué a mí mismo, sigue mi turno.
-                // Si ataqué a otro, sigue MI turno (el origen).
-                enviarEstadoJuego();
-                iniciarTurno();
+                // Al terminar las 3 cartas, volvemos al flujo normal
+                if (target.equals(getJugadorActual()) && jugadoresEnRonda.contains(target)) {
+                    iniciarTurno();
+                } else {
+                    iniciarTurno();
+                }
             }).start();
         }
 
@@ -241,17 +231,14 @@ public class GameManager {
     }
 
     private void plantarse(ClientHandler jugador) {
-        timerTurno.cancel();
+        if(timerTurno != null) timerTurno.cancel();
         int puntos = reglas.calcularPuntosMesa(cartasJugadores.get(jugador));
         broadcast(new Mensaje(TipoMensaje.MENSAJE_CHAT, jugador.getNombreUsuario() + " se plantó con " + puntos));
-
-        // Sacar de la ronda activa
         jugadoresEnRonda.remove(jugador);
-
-        // Revisar índice
         if (indiceTurno >= jugadoresEnRonda.size()) indiceTurno = 0;
 
-        iniciarTurno(); // Pasa al siguiente que quede vivo
+        // Hilo aparte para no bloquear si plantarse fue llamado desde un evento síncrono
+        new Thread(this::iniciarTurno).start();
     }
 
     private void plantarseAutomatico() {
@@ -262,15 +249,13 @@ public class GameManager {
 
     private void finDeRonda() {
         broadcast(new Mensaje(TipoMensaje.MENSAJE_CHAT, "--- FIN DE LA RONDA ---"));
-        // Aquí iría la lógica para reiniciar manos, ver quién ganó 200pts, etc.
-        // Por ahora reiniciamos simple:
-        try { Thread.sleep(3000); } catch (Exception e) {}
+        // PAUSA LARGA DE 5 SEGUNDOS PARA VER RESULTADOS
+        try { Thread.sleep(5000); } catch (Exception e) {}
         iniciarPartida();
     }
 
     private ClientHandler getJugadorActual() {
         if (jugadoresEnRonda.isEmpty()) return null;
-        if (indiceTurno >= jugadoresEnRonda.size()) indiceTurno = 0;
         return jugadoresEnRonda.get(indiceTurno);
     }
 
@@ -279,13 +264,11 @@ public class GameManager {
     }
 
     private void enviarEstadoJuego() {
-
         Map<String, List<Carta>> estadoGlobal = new HashMap<>();
-        for (ClientHandler h : jugadores) { // Mostramos cartas de TODOS (incluso plantados)
+        for (ClientHandler h : jugadores) {
             estadoGlobal.put(h.getNombreUsuario(), new ArrayList<>(cartasJugadores.get(h)));
         }
         broadcast(new Mensaje(TipoMensaje.ACTUALIZAR_OPONENTES, estadoGlobal));
-
 
         for(ClientHandler j : jugadores) {
             j.enviarMensaje(new Mensaje(TipoMensaje.ACTUALIZAR_TABLERO, cartasJugadores.get(j)));

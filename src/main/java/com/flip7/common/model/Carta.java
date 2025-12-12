@@ -4,9 +4,7 @@ import java.io.Serializable;
 
 public class Carta implements Serializable {
 
-
     public enum Tipo { NUMERO, ACCION, MODIFICADOR }
-
 
     public enum AccionEspecial {
         NINGUNA,
@@ -17,18 +15,16 @@ public class Carta implements Serializable {
         MULTIPLICA_X2
     }
 
-    private int valor; // Para números (0-12) y sumas (+2, +10)
+    private int valor;
     private Tipo tipo;
     private AccionEspecial accion;
 
-    // Constructor para cartas normales
     public Carta(int valor) {
         this.valor = valor;
         this.tipo = Tipo.NUMERO;
         this.accion = AccionEspecial.NINGUNA;
     }
 
-    // Constructor para especiales
     public Carta(Tipo tipo, AccionEspecial accion, int valor) {
         this.tipo = tipo;
         this.accion = accion;
@@ -41,7 +37,6 @@ public class Carta implements Serializable {
 
     @Override
     public String toString() {
-        if (tipo == Tipo.NUMERO) return String.valueOf(valor);
-        return accion.toString();
+        return (tipo == Tipo.NUMERO) ? String.valueOf(valor) : accion.toString();
     }
 }
