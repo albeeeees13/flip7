@@ -1,58 +1,89 @@
 package com.flip7.client.ui;
 
-import com.flip7.client.Controller.GameController; // Asegúrate que la carpeta sea 'controller' minúscula
+import com.flip7.client.Controller.GameController;
 import javax.swing.*;
 import java.awt.*;
 
 public class LobbyWindow extends JFrame {
 
-    // --- 1. DECLARACIÓN DE VARIABLES (Todo va aquí arriba) ---
     private GameController controller;
-    private JButton btnCrear, btnUnirse;
-    private JList<String> listaSalas;
-    private DefaultListModel<String> modeloSalas;
 
-    // --- 2. EL CONSTRUCTOR (Solo uno) ---
+
+    private DefaultListModel<String> modeloSalas;
+    private JList<String> listaSalas;
+    private JButton btnCrear;
+    private JButton btnUnirse;
+
+
     public LobbyWindow(GameController controller) {
         this.controller = controller;
-        this.controller.setCurrentView(this);
-
-        setTitle("Flip 7 - Lobby");
-        setSize(600, 400);
+        setTitle("Lobby - Flip 7");
+        setSize(400, 500);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
 
-        // Configurar la lista
-        modeloSalas = new DefaultListModel<>();
-        listaSalas = new JList<>(modeloSalas);
-        add(new JScrollPane(listaSalas), BorderLayout.CENTER);
+        // 1. Panel Central (Lista de Salas)
+        modeloSalas = new DefaultListModel<>(); // Inicializamos el modelo
+        listaSalas = new JList<>(modeloSalas);  // Conectamos la lista al modelo
+        listaSalas.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
-        // Configurar botones
+        JScrollPane scroll = new JScrollPane(listaSalas);
+        scroll.setBorder(BorderFactory.createTitledBorder("Salas Disponibles"));
+        add(scroll, BorderLayout.CENTER);
+
+        // 2. Panel Inferior (Botones)
         JPanel panelBotones = new JPanel();
         btnCrear = new JButton("Crear Sala");
-        btnUnirse = new JButton("Unirse a Sala");
+        btnUnirse = new JButton("Unirse");
 
         panelBotones.add(btnCrear);
         panelBotones.add(btnUnirse);
         add(panelBotones, BorderLayout.SOUTH);
 
-        // Configurar acciones (Listeners)
-        btnCrear.addActionListener(e -> controller.crearSala());
+        // --- ACCIONES DE LOS BOTONES ---
 
-        btnUnirse.addActionListener(e -> {
-            if (listaSalas.getSelectedValue() != null) {
-                controller.unirseSala(listaSalas.getSelectedValue());
-            } else {
-                JOptionPane.showMessageDialog(this, "Por favor selecciona una sala de la lista.");
+        // Botón CREAR: Pregunta el límite de jugadores
+        btnCrear.addActionListener(e -> {
+            String input = JOptionPane.showInputDialog(this, "¿Máximo de jugadores? (2-8)", "4");
+            if (input != null && !input.isEmpty()) {
+                try {
+                    int limite = Integer.parseInt(input);
+                    if (limite < 2 || limite > 8) {
+                        JOptionPane.showMessageDialog(this, "El límite debe ser entre 2 y 8.");
+                    } else {
+                        // Llamamos al controller con el límite
+                        controller.crearSala(limite);
+                    }
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(this, "Ingresa un número válido.");
+                }
             }
         });
+
+        // Botón UNIRSE: Toma la sala seleccionada
+        btnUnirse.addActionListener(e -> {
+            String salaSeleccionada = listaSalas.getSelectedValue();
+            if (salaSeleccionada != null) {
+                controller.unirseSala(salaSeleccionada);
+            } else {
+                JOptionPane.showMessageDialog(this, "Selecciona una sala de la lista.");
+            }
+        });
+
+
     }
 
-    // --- 3. MÉTODOS EXTRA (Fuera del constructor) ---
+
+
     public void actualizarListaSalas(String[] salas) {
-        modeloSalas.clear();
-        for (String s : salas) {
-            modeloSalas.addElement(s);
-        }
+
+        SwingUtilities.invokeLater(() -> {
+            modeloSalas.clear();
+            if (salas != null) {
+                for (String s : salas) {
+                    modeloSalas.addElement(s);
+                }
+            }
+        });
     }
 }

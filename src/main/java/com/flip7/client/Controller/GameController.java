@@ -146,12 +146,14 @@ public class GameController {
         }
     }
 
+
     public void crearSala(int limite) {
         if (connection != null) {
 
             connection.enviarMensaje(new Mensaje(TipoMensaje.CREAR_SALA, String.valueOf(limite)));
         }
     }
+
 
     public void unirseSala(String idSala) {
         if (connection != null) connection.enviarMensaje(new Mensaje(TipoMensaje.UNIRSE_SALA, idSala));
@@ -169,6 +171,7 @@ public class GameController {
         game.setVisible(true);
         this.currentView = game;
     }
+
 
     public void enviarAccionJuego(TipoMensaje accion) {
         if (connection != null) {
