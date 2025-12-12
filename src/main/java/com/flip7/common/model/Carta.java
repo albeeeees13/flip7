@@ -1,30 +1,47 @@
 package com.flip7.common.model;
 
-import com.flip7.common.enums.TipoAccion;
-
 import java.io.Serializable;
 
-// Serializable es clave para mandarlo por sockets
 public class Carta implements Serializable {
 
-    private int valor;           // Puntos (0 a 12)
-    private TipoAccion accion;   // Poder especial (FLIP_3, FREEZE...)
-    private String texto;        // Lo que mostramos en la UI
 
-    public Carta() {}
+    public enum Tipo { NUMERO, ACCION, MODIFICADOR }
 
-    public Carta(int valor, TipoAccion accion, String texto) {
+
+    public enum AccionEspecial {
+        NINGUNA,
+        FREEZE,
+        FLIP_3,
+        SECOND_CHANCE,
+        SUMA_2, SUMA_4, SUMA_6, SUMA_8, SUMA_10,
+        MULTIPLICA_X2
+    }
+
+    private int valor; // Para números (0-12) y sumas (+2, +10)
+    private Tipo tipo;
+    private AccionEspecial accion;
+
+    // Constructor para cartas normales
+    public Carta(int valor) {
         this.valor = valor;
+        this.tipo = Tipo.NUMERO;
+        this.accion = AccionEspecial.NINGUNA;
+    }
+
+    // Constructor para especiales
+    public Carta(Tipo tipo, AccionEspecial accion, int valor) {
+        this.tipo = tipo;
         this.accion = accion;
-        this.texto = texto;
+        this.valor = valor;
     }
 
     public int getValor() { return valor; }
-    public TipoAccion getAccion() { return accion; }
-    public String getTexto() { return texto; }
-
+    public Tipo getTipo() { return tipo; }
+    public AccionEspecial getAccion() { return accion; }
+    
     @Override
     public String toString() {
-        return texto + " (" + valor + ")";
+        if (tipo == Tipo.NUMERO) return String.valueOf(valor);
+        return accion.toString();
     }
 }
