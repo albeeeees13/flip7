@@ -93,7 +93,12 @@ public class GameController {
                 break;
 
             case MENSAJE_CHAT:
-                JOptionPane.showMessageDialog(currentView, "💬 " + msj.getContenido());
+                if (currentView instanceof GameWindow) {
+                    ((GameWindow) currentView).agregarMensajeChat((String) msj.getContenido());
+                } else {
+
+                    JOptionPane.showMessageDialog(currentView, "Chat: " + msj.getContenido());
+                }
                 break;
         }
     }

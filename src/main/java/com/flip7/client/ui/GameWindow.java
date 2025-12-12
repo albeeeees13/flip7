@@ -9,6 +9,8 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.util.List;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 
 public class GameWindow extends JFrame {
 
@@ -28,24 +30,24 @@ public class GameWindow extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); // Importante para cerrar procesos
         setLayout(new BorderLayout());
 
-
+        // --- 1. PANEL CENTRAL (MESA VERDE) ---
         panelMesa = new JPanel();
         panelMesa.setBackground(new Color(39, 119, 20)); // Verde tapete más elegante
         panelMesa.setLayout(new FlowLayout(FlowLayout.CENTER, 10, 20)); // Cartas centradas
 
-
+        // Scroll por si hay muchas cartas
         JScrollPane scrollMesa = new JScrollPane(panelMesa);
         scrollMesa.setBorder(null); // Sin borde feo
         add(scrollMesa, BorderLayout.CENTER);
 
 
-
+        // --- 2. PANEL LATERAL (DERECHA - CHAT E INFO) ---
         panelLateral = new JPanel();
         panelLateral.setLayout(new BorderLayout());
         panelLateral.setPreferredSize(new Dimension(250, 0));
         panelLateral.setBorder(BorderFactory.createMatteBorder(0, 2, 0, 0, Color.DARK_GRAY));
 
-
+        // Area de Chat (Log del juego)
         areaChat = new JTextArea();
         areaChat.setEditable(false);
         areaChat.setLineWrap(true);
@@ -98,6 +100,7 @@ public class GameWindow extends JFrame {
         btnEnviar.addActionListener(enviarChatAction);
     }
 
+    // Método auxiliar para botones bonitos
     private JButton crearBotonEstilizado(String texto, Color color) {
         JButton btn = new JButton(texto);
         btn.setBackground(color);
