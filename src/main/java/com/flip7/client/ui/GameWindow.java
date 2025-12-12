@@ -109,6 +109,11 @@ public class GameWindow extends JFrame {
 
         add(panelControles, BorderLayout.SOUTH);
 
+        panelMiMesa = new JPanel(); // Inícialo
+        panelMiMesa.setBackground(new Color(39, 119, 20));
+// ... configuras layouts ...
+        add(new JScrollPane(panelMiMesa), BorderLayout.CENTER); // Agrégalo a la ventana
+
 
         btnFlip.addActionListener(e -> controller.enviarAccionJuego(TipoMensaje.ACCION_SACAR));
         btnPlantarse.addActionListener(e -> controller.enviarAccionJuego(TipoMensaje.ACCION_PLANTARSE));
@@ -126,14 +131,16 @@ public class GameWindow extends JFrame {
 
 
     public void actualizarMesa(List<Carta> cartas) {
-        panelMiMesa.removeAll();
-        for(Carta c : cartas) {
-            panelMiMesa.add(new CartaPanel(c)); // Usa nuestra clase visual bonita
-        }
-        panelMiMesa.revalidate();
-        panelMiMesa.repaint();
+        // Usa SwingUtilities para evitar errores visuales
+        SwingUtilities.invokeLater(() -> {
+            panelMiMesa.removeAll(); // <--- USA LA MISMA VARIABLE
+            for(Carta c : cartas) {
+                panelMiMesa.add(new CartaPanel(c));
+            }
+            panelMiMesa.revalidate();
+            panelMiMesa.repaint();
+        });
     }
-
 
     public void mostrarEfectoBust() {
         for (Component comp : panelMiMesa.getComponents()) {

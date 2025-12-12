@@ -1,6 +1,7 @@
 package com.flip7.common.model;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 public class Carta implements Serializable {
 
@@ -38,5 +39,19 @@ public class Carta implements Serializable {
     @Override
     public String toString() {
         return (tipo == Tipo.NUMERO) ? String.valueOf(valor) : accion.toString();
+    }
+
+    // --- ¡ESTO ES LO NUEVO QUE ARREGLA EL SECOND CHANCE INFINITO! ---
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Carta carta = (Carta) o;
+        return valor == carta.valor && tipo == carta.tipo && accion == carta.accion;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(valor, tipo, accion);
     }
 }
