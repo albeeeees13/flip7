@@ -105,7 +105,22 @@ public class GameManager {
     }
 
     public void procesarJugada(ClientHandler solicitante, Mensaje msj) {
-        synchronized (lock) { if (espectadores.contains(solicitante)) return; }
+
+        synchronized (lock) {
+            if (espectadores.contains(solicitante)) {
+                if (msj.getTipo() == TipoMensaje.MENSAJE_CHAT) {
+                    broadcast(new Mensaje(TipoMensaje.MENSAJE_CHAT, "[Espectador] " + solicitante.getNombreUsuario() + ": " + msj.getContenido()));
+                }
+                return;
+            }
+        }
+
+
+        if (msj.getTipo() == TipoMensaje.MENSAJE_CHAT) {
+            broadcast(new Mensaje(TipoMensaje.MENSAJE_CHAT, solicitante.getNombreUsuario() + ": " + msj.getContenido()));
+            return; // Terminamos, no hace falta validar turno
+        }
+
 
         long ahora = System.currentTimeMillis();
         if (ahora - ultimoTiempoAccion < 500) return;
@@ -119,18 +134,24 @@ public class GameManager {
             actual = jugadoresEnRonda.get(indiceTurno);
         }
 
-        if (!solicitante.equals(actual) && tipo != TipoMensaje.SELECCIONAR_OBJETIVO) return;
+
+        if (!solicitante.equals(actual) && tipo != TipoMensaje.SELECCIONAR_OBJETIVO) {
+            solicitante.enviarMensaje(new Mensaje(TipoMensaje.ERROR, "No es tu turno"));
+            return;
+        }
+
         if (esperandoObjetivo && tipo != TipoMensaje.SELECCIONAR_OBJETIVO) return;
 
         try {
             switch (tipo) {
                 case ACCION_SACAR: sacarCarta(solicitante); break;
                 case ACCION_PLANTARSE:
-                    sacarDeRonda(solicitante, true); // true = Sumar puntos
+                    sacarDeRonda(solicitante, true);
                     siguienteTurno();
                     break;
                 case SELECCIONAR_OBJETIVO:
-                    aplicarEfectoEspecial(solicitante, (String) msj.getContenido());
+                    String objetivo = (String) msj.getContenido();
+                    aplicarEfectoEspecial(solicitante, objetivo);
                     break;
             }
         } catch (Exception e) {
